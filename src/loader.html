@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loading...</title>
+  </head>
+
+  <body>
+    <script>
+      async function loadApp(params) {
+        try {
+          const res = await fetch(location_url)
+            .then((res) => res)
+            .catch(() => ({ ok: false }));
+          if (res.ok) location.href = location_url;
+          else loadApp();
+        } catch (error) {
+          loadApp();
+        }
+      }
+
+      loadApp();
+    </script>
+  </body>
+</html>
