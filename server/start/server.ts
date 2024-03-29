@@ -10,6 +10,11 @@ const port = 782; // 3000;
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
+if (process.argv[2] === "start") {
+  //To hide your console just call:
+  import("node-hide-console-window").then((mod) => mod.hideConsole());
+}
+
 app.prepare().then(() => {
   createServer(async (req, res) => {
     try {

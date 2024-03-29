@@ -4,6 +4,7 @@ cachetools==5.3.3
 certifi==2024.2.2
 charset-normalizer==3.3.2
 colorama==0.4.6
+decorator==5.1.1
 dnspython==2.6.1
 filelock==3.13.3
 google-api-core==2.18.0
@@ -24,14 +25,18 @@ pyinstaller==6.5.0
 pyinstaller-hooks-contrib==2024.3
 pymongo==4.6.2
 pyparsing==3.1.2
+pypiwin32==223
 PySocks==1.7.1
 python-dotenv==1.0.1
+pyuac==0.0.3
+pywin32==306
 pywin32-ctypes==0.2.2
 requests==2.31.0
 rsa==4.9
 setuptools==69.2.0
 six==1.16.0
 soupsieve==2.5
+tee==0.0.3
 tqdm==4.66.2
 uritemplate==4.1.1
 urllib3==2.2.1

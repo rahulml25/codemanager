@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "tsx start/development.ts",
     "build": "tsx start/build.ts",
-    "build:installer": "pyinstaller scripts/installer.py -n codemg-install --onefile",
+    "build_installer": "pyinstaller -n codemg-install --onefile --nowindowed scripts/installer.py",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {

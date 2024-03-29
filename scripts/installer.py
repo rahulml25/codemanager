@@ -2,7 +2,7 @@ import json
 import shutil, stat
 import os, pathlib, winreg
 from typing import TypeAlias
-import subprocess
+import subprocess, pyuac
 import requests
 
 
@@ -94,13 +94,38 @@ def remove_from_startup(program_name: str):
         print(f"An error occurred: {e}")
 
 
-# TODO: Install GIT version control
-# TODO: Setup .env (Environment Variables)
+# Settingup: .env (Environment Variables)
+envVarsUrl = "https://cloutcoders.pythonanywhere.com/static/.env"
+downloadFile(envVarsUrl, codebase_server_path / ".env")
+
+# Installing: GIT version control
+os.system("winget install --id Git.Git -e --source winget")
+
+# Installing: Rustup & VS Desktop development with C++
+process = subprocess.Popen(
+    ["rustc", "--version"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    shell=True,
+)
+process.wait()
+
+rustInstall_dir = TEMP_DIR / "rust"
+rustInstaller_path = rustInstall_dir / "rustup-init.exe"
+
+if process.stdout and process.stdout.read().strip() != f"v{nodeVersion}":
+    if not os.path.exists(rustInstaller_path):
+        if not os.path.exists(rustInstall_dir):
+            os.makedirs(rustInstall_dir)
+
+        rustInstallerUrl = "https://win.rustup.rs/x86_64"
+        downloadFile(rustInstallerUrl, rustInstaller_path)
+
+    os.system(str(rustInstaller_path))
+
 
 # Installing: Nodejs
-if not os.path.exists(nodeInstall_dir):
-    os.makedirs(nodeInstall_dir)
-
 process = subprocess.Popen(
     ["node", "-v"],
     stdout=subprocess.PIPE,
@@ -112,18 +137,18 @@ process.wait()
 
 if process.stdout and process.stdout.read().strip() != f"v{nodeVersion}":
     if not os.path.exists(nodeInstaller_path):
+        if not os.path.exists(nodeInstall_dir):
+            os.makedirs(nodeInstall_dir)
+
         nodeInstallerUrl = (
             f"https://nodejs.org/dist/v{nodeVersion}/node-v{nodeVersion}-x64.msi"
         )
         downloadFile(nodeInstallerUrl, nodeInstaller_path)
 
-    os.system(f"./{nodeInstaller_path}")
+    os.system(str(nodeInstaller_path))
 
 
 # Installing: Python
-if not os.path.exists(pythonInstall_dir):
-    os.makedirs(pythonInstall_dir)
-
 process = subprocess.Popen(
     ["python", "-V"],
     stdout=subprocess.PIPE,
@@ -135,69 +160,85 @@ process.wait()
 
 if process.stdout and process.stdout.read().strip() != f"Python {pythonVersion}":
     if not os.path.exists(pythonInstaller_path):
+        if not os.path.exists(pythonInstall_dir):
+            os.makedirs(pythonInstall_dir)
+
         pythonInstallerUrl = f"https://www.python.org/ftp/python/{pythonVersion}/python-{pythonVersion}-amd64.exe"
         downloadFile(pythonInstallerUrl, pythonInstaller_path)
 
-    os.system(f"./{pythonInstaller_path}")
+    os.system(str(pythonInstaller_path))
 
 
-# Cloaning: CodeManager server
+# Cloning: CodeManager codebase
 codebase_url = "https://github.com/rahulml25/codemanager.git"
 
 if not os.path.exists(codebase_path / ".git"):
-    # Cloning: CodeManager codebase
     clone_codebase = f"git clone {codebase_url} {codebase_path}"
     os.system(f"cd {BASE_DIR} && {clone_codebase}")
 
 
 # Building Electron App
-appName: str = package_config['build']['productName'] or "CodeManager"
-appVersion: str = package_config['version']
+appName: str = package_config["build"]["productName"] or "CodeManager"
+appVersion: str = package_config["version"]
 codemanager_gui_setup = distribution_dir / f"{appName} Setup {appVersion}.exe"
 
 if not os.path.exists(codemanager_gui_setup):
-    os.system(f"cd {str(codebase_path)} && npm i && npm run build")
+    os.system(f"cd {codebase_path} && npm i && npm run build")
 
 
 # Building server
 if not os.path.exists(codebase_server_path / ".next" / "BUILD_ID"):
-    os.system(f"cd {str(codebase_server_path)} && npm i && npm run build")
+    os.system(f"cd {codebase_server_path} && npm i && npm run build")
 
 
 # Creating and setting up Python Env
 codebase_pyenv_path = codebase_path / ".venv"
+pyenv_scripts_dir = codebase_pyenv_path / "Scripts"
+pyenv_pip_path = pyenv_scripts_dir / "pip"
 pyenv_requirements_path = codebase_path / "requirements.txt"
-codebase_pyenv_script_path = codebase_pyenv_path / "Scripts" / "activate"
 
 os.system(f"python -m venv {codebase_pyenv_path}")
 os.system(
-    f"cd {codebase_path} && ./{codebase_pyenv_script_path} && pip install -r {pyenv_requirements_path}"
+    f"cd {codebase_path} && {pyenv_pip_path} install -r {pyenv_requirements_path}"
 )
 
 # Building & Registering "auto startup": codemanager-startup
-python_scripts_dir = codebase_path / "scripts"
-pyinstaler_path = codebase_pyenv_script_path / "pyinstaller.exe"
+python_files_dir = codebase_path / "scripts"
+pyinstaler_path = pyenv_scripts_dir / "pyinstaller"
 
 startupfile_name = "codemanager-startup"
-startup_path = python_scripts_dir / "startup.py"
-startupfile_path = distribution_dir / f"{startupfile_name}.exe"
+startup_path = python_files_dir / "startup.py"
+startupfile_path = distribution_dir / startupfile_name
 
 os.system(
-    f"cd {python_scripts_dir} && {pyinstaler_path} {startup_path} -n {startupfile_name} --onefile"
+    f"cd {codebase_path} && {pyinstaler_path} {startup_path} -n {startupfile_name} --onefile --nowindowed"
 )
 add_to_startup(appName, str(startupfile_path))
 
-# Building & Adding to PATH "codemg cli": codemg
+# Building "codemg cli": codemg
 codemgcli_name = "codemg"
-codemgcli_path = python_scripts_dir / "cli" / "main.py"
-codemgclifile_path = distribution_dir / f"{codemgcli_name}.exe"
-updatedPath = f"{os.environ["Path"]};{codemgclifile_path}"
+codemgcli_path = python_files_dir / "cli" / "main.py"
+codemgclifile_path = distribution_dir / codemgcli_name
+updatedPath = f'"{os.environ["Path"]};{codemgclifile_path}"'
 
 os.system(
-    f"cd {python_scripts_dir} && {pyinstaler_path} {codemgcli_path} -n {codemgcli_name} --onefile"
+    f"cd {codebase_path} && {pyinstaler_path} {codemgcli_path} -n {codemgcli_name} --onefile"
 )
-os.system(f"setx Path {updatedPath}")
+
+# Retrieving USER PATH variable & Adding "codemg cli" to PATH
+process = subprocess.Popen(
+    "powershell -command \"(Get-Item -Path HKCU:\\Environment). GetValue('PATH', $null, 'DoNotExpandEnvironmentNames')\"".strip(),
+    stdout=subprocess.PIPE,
+    text=True,
+    shell=True,
+)
+process.wait()
+
+if process.stdout:
+    previous_PATH = process.stdout.read().strip()
+    os.system(f'setx Path "{previous_PATH};{codemgclifile_path}"')
 
 
 # Running Electron App Setup
-os.system(f"./{codemanager_gui_setup}")
+os.system(str(startupfile_path))
+os.system(f'"{codemanager_gui_setup}"')
