@@ -2,7 +2,7 @@ import json
 import shutil, stat
 import os, pathlib, winreg
 from typing import TypeAlias
-import subprocess, pyuac
+import subprocess
 import requests
 
 
@@ -18,10 +18,6 @@ codebase_server_path = codebase_path / "server"
 distribution_dir = codebase_path / "dist"
 startup_registry_key = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
-with open(codebase_path / "package.json") as file:
-    package_config = json.load(file)
-
-
 # Nodejs config
 nodeVersion = "20.12.0"
 nodeInstall_dir = TEMP_DIR / "nodejs"
@@ -31,6 +27,10 @@ nodeInstaller_path = nodeInstall_dir / "nodejs_installer.msi"
 pythonVersion = "3.12.2"
 pythonInstall_dir = TEMP_DIR / "python"
 pythonInstaller_path = pythonInstall_dir / "python_installer.exe"
+
+# Executables
+nodeNPM_path = r'"C:\Program Files\nodejs\npm"'
+git_path = r'"C:\Program Files\Git\cmd\git.exe"'
 
 
 def delete_folder(path: StrOrBytesPath):
@@ -94,10 +94,6 @@ def remove_from_startup(program_name: str):
         print(f"An error occurred: {e}")
 
 
-# Settingup: .env (Environment Variables)
-envVarsUrl = "https://cloutcoders.pythonanywhere.com/static/.env"
-downloadFile(envVarsUrl, codebase_server_path / ".env")
-
 # Installing: GIT version control
 os.system("winget install --id Git.Git -e --source winget")
 
@@ -114,7 +110,7 @@ process.wait()
 rustInstall_dir = TEMP_DIR / "rust"
 rustInstaller_path = rustInstall_dir / "rustup-init.exe"
 
-if process.stdout and process.stdout.read().strip() != f"v{nodeVersion}":
+if process.stdout and not process.stdout.read().strip().startswith("rust"):
     if not os.path.exists(rustInstaller_path):
         if not os.path.exists(rustInstall_dir):
             os.makedirs(rustInstall_dir)
@@ -122,30 +118,7 @@ if process.stdout and process.stdout.read().strip() != f"v{nodeVersion}":
         rustInstallerUrl = "https://win.rustup.rs/x86_64"
         downloadFile(rustInstallerUrl, rustInstaller_path)
 
-    os.system(str(rustInstaller_path))
-
-
-# Installing: Nodejs
-process = subprocess.Popen(
-    ["node", "-v"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-    text=True,
-    shell=True,
-)
-process.wait()
-
-if process.stdout and process.stdout.read().strip() != f"v{nodeVersion}":
-    if not os.path.exists(nodeInstaller_path):
-        if not os.path.exists(nodeInstall_dir):
-            os.makedirs(nodeInstall_dir)
-
-        nodeInstallerUrl = (
-            f"https://nodejs.org/dist/v{nodeVersion}/node-v{nodeVersion}-x64.msi"
-        )
-        downloadFile(nodeInstallerUrl, nodeInstaller_path)
-
-    os.system(str(nodeInstaller_path))
+    os.system(f"{rustInstaller_path} --default-toolchain stable --profile default")
 
 
 # Installing: Python
@@ -169,35 +142,86 @@ if process.stdout and process.stdout.read().strip() != f"Python {pythonVersion}"
     os.system(str(pythonInstaller_path))
 
 
+# Installing: Nodejs
+process = subprocess.Popen(
+    ["node", "-v"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    shell=True,
+)
+process.wait()
+
+if process.stdout and process.stdout.read().strip() != f"v{nodeVersion}":
+    if not os.path.exists(nodeInstaller_path):
+        if not os.path.exists(nodeInstall_dir):
+            os.makedirs(nodeInstall_dir)
+
+        nodeInstallerUrl = (
+            f"https://nodejs.org/dist/v{nodeVersion}/node-v{nodeVersion}-x64.msi"
+        )
+        downloadFile(nodeInstallerUrl, nodeInstaller_path)
+
+    os.system(str(nodeInstaller_path))
+    input("Nodejs installed. Please Restart the shell")
+    os._exit(0)
+
+
+# TODO: Install MongoDB local server
+
 # Cloning: CodeManager codebase
 codebase_url = "https://github.com/rahulml25/codemanager.git"
 
 if not os.path.exists(codebase_path / ".git"):
-    clone_codebase = f"git clone {codebase_url} {codebase_path}"
+    clone_codebase = f"{git_path} clone {codebase_url} {codebase_path}"
     os.system(f"cd {BASE_DIR} && {clone_codebase}")
+
+# Settingup: .env (Environment Variables)
+envVARsUrl = "https://cloutcoders.pythonanywhere.com/static/.env"
+downloadFile(envVARsUrl, codebase_server_path / ".env")
 
 
 # Building Electron App
+with open(codebase_path / "package.json") as file:
+    package_config = json.load(file)
+
 appName: str = package_config["build"]["productName"] or "CodeManager"
 appVersion: str = package_config["version"]
-codemanager_gui_setup = distribution_dir / f"{appName} Setup {appVersion}.exe"
+
+codemanager_exe_name = f"{appName} Setup {appVersion}.exe"
+codemanager_gui_setup_init = distribution_dir / codemanager_exe_name
+codemanager_gui_setup = TEMP_DIR / "gui-setup" / codemanager_exe_name
 
 if not os.path.exists(codemanager_gui_setup):
-    os.system(f"cd {codebase_path} && npm i && npm run build")
+    os.system(f"cd {codebase_path} && {nodeNPM_path} i && {nodeNPM_path} run build")
+    if not os.path.exists(codemanager_gui_setup.parent):
+        os.makedirs(codemanager_gui_setup.parent)
+    shutil.move(codemanager_gui_setup_init, codemanager_gui_setup)
 
 
 # Building server
 if not os.path.exists(codebase_server_path / ".next" / "BUILD_ID"):
-    os.system(f"cd {codebase_server_path} && npm i && npm run build")
+    os.system(
+        f"cd {codebase_server_path} && {nodeNPM_path} i && {nodeNPM_path} run build"
+    )
 
 
 # Creating and setting up Python Env
 codebase_pyenv_path = codebase_path / ".venv"
 pyenv_scripts_dir = codebase_pyenv_path / "Scripts"
-pyenv_pip_path = pyenv_scripts_dir / "pip"
 pyenv_requirements_path = codebase_path / "requirements.txt"
 
-os.system(f"python -m venv {codebase_pyenv_path}")
+user_python_path = (
+    pathlib.Path(os.environ["LOCALAPPDATA"])
+    / "Programs"
+    / "Python"
+    / f"Python{''.join(pythonVersion.split('.')[:-1])}"
+    / "python"
+)
+pyenv_pip_path = pyenv_scripts_dir / "pip"
+
+if not os.path.exists(codebase_pyenv_path):
+    os.system(f"{user_python_path} -m venv {codebase_pyenv_path}")
 os.system(
     f"cd {codebase_path} && {pyenv_pip_path} install -r {pyenv_requirements_path}"
 )
@@ -219,13 +243,12 @@ add_to_startup(appName, str(startupfile_path))
 codemgcli_name = "codemg"
 codemgcli_path = python_files_dir / "cli" / "main.py"
 codemgclifile_path = distribution_dir / codemgcli_name
-updatedPath = f'"{os.environ["Path"]};{codemgclifile_path}"'
 
 os.system(
     f"cd {codebase_path} && {pyinstaler_path} {codemgcli_path} -n {codemgcli_name} --onefile"
 )
 
-# Retrieving USER PATH variable & Adding "codemg cli" to PATH
+# Checking USER PATH variable & Adding "codemg cli" to PATH
 process = subprocess.Popen(
     "powershell -command \"(Get-Item -Path HKCU:\\Environment). GetValue('PATH', $null, 'DoNotExpandEnvironmentNames')\"".strip(),
     stdout=subprocess.PIPE,
@@ -236,9 +259,10 @@ process.wait()
 
 if process.stdout:
     previous_PATH = process.stdout.read().strip()
-    os.system(f'setx Path "{previous_PATH};{codemgclifile_path}"')
+    if not str(distribution_dir) in previous_PATH:
+        os.system(f'setx Path "{previous_PATH};{distribution_dir}"')
 
 
 # Running Electron App Setup
-os.system(str(startupfile_path))
+subprocess.Popen(str(startupfile_path))
 os.system(f'"{codemanager_gui_setup}"')

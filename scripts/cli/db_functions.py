@@ -14,4 +14,4 @@ def create_project_db(
         "path": path,
         "description": description,
     }
-    data = requests.post("http://localhost:782/api/projects", json=project_data)
+    _ = requests.post("http://localhost:782/api/projects", json=project_data)

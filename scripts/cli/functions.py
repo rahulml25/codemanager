@@ -1,8 +1,8 @@
 import json, os
-from config import JS_PACKAGE_MANAGERS
-from scripts.cli.db_functions import create_project_db
-from utils import create_directory, create_python_enviromment
 import subprocess
+from config import JS_PACKAGE_MANAGERS
+from db_functions import create_project_db
+from utils import create_directory, create_python_enviromment
 
 
 def create_normal_project(directory_name: str, **options: str):
