@@ -94,6 +94,9 @@ out/
 # Electron-Builder
 dist/
 
+# CLI bin
+/bin/
+
 # TSC
 /app/
 
@@ -280,3 +283,8 @@ __pycache__/
 
 # Experiment
 /scripts/test.py
+/scripts/test.pyw
+/scripts/test/
+
+# Required for Python
+!/scripts/lib/
