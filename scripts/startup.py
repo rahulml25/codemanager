@@ -60,14 +60,17 @@ try:
 
 except:
     print("Failed to update repository.", file=sys.stderr)
+    input("Press Enter to Continue.")
 
 
-# Building server
+# Rebuilding Server
 if not (
-    config.codebase_server_nextBuildId_path.exists()
+    config.codebase_nodeModules_path.exists()
+    and config.codebase_server_nextBuildId_path.exists()
     and config.codebase_server_nodeModules_path.exists()
 ):
     terminate_server(srv_port=config.codebase_server_port)
+    os.system(f"cd {config.codebase_path} && {config.npm_absolute_path} i")
     os.system(
         f"cd {config.codebase_server_path} && {config.npm_absolute_path} i && {config.npm_absolute_path} run build"
     )
