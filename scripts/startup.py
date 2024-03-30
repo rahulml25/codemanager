@@ -1,4 +1,5 @@
 import os, pathlib
+import requests
 
 codebase_path = pathlib.Path.home() / ".codemg" / "codebase"
 codebase_server_path = codebase_path / "server"
@@ -14,4 +15,5 @@ if not os.path.exists(codebase_server_path / ".next" / "BUILD_ID"):
         f"cd {codebase_server_path} && {nodeNPM_path} i && {nodeNPM_path} run build"
     )
 
-os.system(f"cd {codebase_server_path} && {nodeNPM_path} run start")
+if not requests.get("http://localhost:782/").ok:
+    os.system(f"cd {codebase_server_path} && {nodeNPM_path} run start")

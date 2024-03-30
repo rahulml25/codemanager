@@ -1,4 +1,4 @@
-import json
+import json, re
 import shutil, stat
 import os, pathlib, winreg
 from typing import TypeAlias
@@ -15,6 +15,7 @@ TEMP_DIR = BASE_DIR / ".temp"
 codebase_path = BASE_DIR / "codebase"
 codebase_server_path = codebase_path / "server"
 
+executables_dir = codebase_path / "bin"
 distribution_dir = codebase_path / "dist"
 startup_registry_key = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
@@ -33,7 +34,7 @@ nodeNPM_path = r'"C:\Program Files\nodejs\npm"'
 git_path = r'"C:\Program Files\Git\cmd\git.exe"'
 
 
-def delete_folder(path: StrOrBytesPath):
+def remove_directory(path: StrOrBytesPath):
     def on_rm_error(func, curr_path, exc_info):
         os.chmod(curr_path, stat.S_IWRITE)
         os.unlink(curr_path)
@@ -50,7 +51,8 @@ def downloadFile(url: str, dest_path: StrOrBytesPath):
                 if chunk:
                     file.write(chunk)
     else:
-        print("Failed to download file:", res.status_code)
+        filename = url.split("/")[-1]
+        print(f"Failed to download file: {filename} [{res.status_code}]")
 
 
 def add_to_startup(program_name: str, path: str):
@@ -95,11 +97,22 @@ def remove_from_startup(program_name: str):
 
 
 # Installing: GIT version control
-os.system("winget install --id Git.Git -e --source winget")
+process = subprocess.Popen(
+    ["git", "-v"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    shell=True,
+)
+process.wait()
+
+if process.stdout and not process.stdout.read().strip().startswith("git version "):
+    os.system("winget install --id Git.Git -e --source winget")
+
 
 # Installing: Rustup & VS Desktop development with C++
 process = subprocess.Popen(
-    ["rustc", "--version"],
+    ["rustc", "-V"],
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
     text=True,
@@ -110,7 +123,7 @@ process.wait()
 rustInstall_dir = TEMP_DIR / "rust"
 rustInstaller_path = rustInstall_dir / "rustup-init.exe"
 
-if process.stdout and not process.stdout.read().strip().startswith("rust"):
+if process.stdout and not process.stdout.read().strip().startswith("rustc "):
     if not os.path.exists(rustInstaller_path):
         if not os.path.exists(rustInstall_dir):
             os.makedirs(rustInstall_dir)
@@ -167,12 +180,64 @@ if process.stdout and process.stdout.read().strip() != f"v{nodeVersion}":
     os._exit(0)
 
 
-# TODO: Install MongoDB local server
+# Installing: MongoDB local Server & Tools
+mongoServerUrl = (
+    "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.7-signed.msi"
+)
+mongoShellUrl = "https://downloads.mongodb.com/compass/mongosh-2.2.2-x64.msi"
+mongoToolsUrl = "https://fastdl.mongodb.org/tools/db/mongodb-database-tools-windows-x86_64-100.9.4.msi"
+
+mongoInstall_dir = TEMP_DIR / "mongodb"
+mongoServerInstaller_path = mongoInstall_dir / "mongoserver_installer.msi"
+mongoShellInstaller_path = mongoInstall_dir / "mongoshell_installer.msi"
+mongoToolsInstaller_path = mongoInstall_dir / "mongotools_installer.msi"
+
+# Installing: MongoDB local server
+process = subprocess.Popen(
+    ["mongosh", "--version"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    shell=True,
+)
+process.wait()
+
+if process.stdout and not re.match(
+    r"[0-9]+.[0-9]+.[0-9]+",
+    process.stdout.read().strip(),
+):
+    if not os.path.exists(mongoServerInstaller_path):
+        downloadFile(mongoServerUrl, mongoServerInstaller_path)
+    if not os.path.exists(mongoShellInstaller_path):
+        downloadFile(mongoShellUrl, mongoShellInstaller_path)
+
+    os.system(mongoServerInstaller_path)
+    os.system(mongoShellInstaller_path)
+
+# Installing: MongoDB Tools
+process = subprocess.Popen(
+    ["mongodump", "/version"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+    shell=True,
+)
+process.wait()
+
+if process.stdout and not process.stdout.read().strip().startswith(
+    "mongodump version: "
+):
+    if not os.path.exists(mongoToolsInstaller_path):
+        downloadFile(mongoToolsUrl, mongoToolsInstaller_path)
+    os.system(mongoToolsInstaller_path)
+
 
 # Cloning: CodeManager codebase
 codebase_url = "https://github.com/rahulml25/codemanager.git"
 
 if not os.path.exists(codebase_path / ".git"):
+    if not os.path.exists(codebase_path):
+        os.makedirs(codebase_path)
     clone_codebase = f"{git_path} clone {codebase_url} {codebase_path}"
     os.system(f"cd {BASE_DIR} && {clone_codebase}")
 
@@ -242,11 +307,16 @@ add_to_startup(appName, str(startupfile_path))
 # Building "codemg cli": codemg
 codemgcli_name = "codemg"
 codemgcli_path = python_files_dir / "cli" / "main.py"
-codemgclifile_path = distribution_dir / codemgcli_name
+codemgclifile_init_path = distribution_dir / f"{codemgcli_name}.exe"
+codemgclifile_path = executables_dir / f"{codemgcli_name}.exe"
+
+if not os.path.exists(executables_dir):
+    os.makedirs(executables_dir)
 
 os.system(
     f"cd {codebase_path} && {pyinstaler_path} {codemgcli_path} -n {codemgcli_name} --onefile"
 )
+shutil.move(codemgclifile_init_path, codemgclifile_path)
 
 # Checking USER PATH variable & Adding "codemg cli" to PATH
 process = subprocess.Popen(
@@ -259,8 +329,8 @@ process.wait()
 
 if process.stdout:
     previous_PATH = process.stdout.read().strip()
-    if not str(distribution_dir) in previous_PATH:
-        os.system(f'setx Path "{previous_PATH};{distribution_dir}"')
+    if not str(executables_dir) in previous_PATH:
+        os.system(f'setx Path "{previous_PATH};{executables_dir}"')
 
 
 # Running Electron App Setup
