@@ -1,0 +1,74 @@
+name: CodeManager Installer Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: write-all
+
+jobs:
+  get_tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: nimblehq/branch-tag-action@v1
+        id: extract_tag
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Extract Tag message
+        run: |
+          git fetch --tags --force
+          TAG_MESSAGE=$(git tag -l --format='%(contents:subject)' ${{ steps.extract_tag.outputs.branch_tag }})
+          echo "::set-output name=branch_tag_message::$TAG_MESSAGE"
+
+    outputs:
+      tag_name: ${{ steps.extract_tag.outputs.branch_tag }}
+      tag_message: ${{ steps.extract_tag.outputs.branch_tag_message }}
+
+  build:
+    needs: get_tag
+    name: Build CodeManager Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.12.2"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Build Executable
+        run: |
+          pyinstaller -n codemg-install --onefile --nowindowed scripts/installer.py
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.get_tag.outputs.tag_name }} # Set your desired tag name
+          release_name: Release ${{ needs.get_tag.outputs.tag_name }} # Set your desired release name
+          body: |
+            ${{ needs.get_tag.outputs.tag_message }}
+            ${{ github.event.head_commit.message }}
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/codemg-install.exe # Set the path to your executable
+          asset_name: codemg-install.exe # Set the name of your executable
+          asset_content_type: application/octet-stream

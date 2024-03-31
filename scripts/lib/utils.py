@@ -7,6 +7,15 @@ StrOrBytesPath: TypeAlias = str | bytes | os.PathLike[str] | os.PathLike[bytes]
 
 
 # Process Handeling
+def find_process_by_name(process_name: str):
+    import psutil
+
+    for proc in psutil.process_iter(["pid", "name"]):
+        if proc.name() == process_name:
+            return True
+    return False
+
+
 def terminate_process_by_name(process_name: str):
     import psutil
 

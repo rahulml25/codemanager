@@ -22,7 +22,8 @@ format_path: Callable[[pathlib.Path, dict[str, str]], pathlib.Path] = (
 
 
 # Terminating: codemanager-startup & Server
-terminate_process_by_name(config.codemgStartup_exe_name)
+if __name__ == "__main__":
+    terminate_process_by_name(config.codemgStartup_exe_name)
 terminate_server(srv_port=config.codebase_server_port)
 
 
