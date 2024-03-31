@@ -74,13 +74,6 @@ if not (
         f"cd {config.codebase_server_path} && {config.npm_absolute_path} i && {config.npm_absolute_path} run build"
     )
 
-# Rebuilding starting Server
-if not is_serverOK():
-    os.system(
-        f"cd {config.codebase_server_path} && {config.npm_absolute_path} run start"
-    )
-
-
 # Updating CodeManager
 try:
     repo = git.Repo(config.codebase_path)
@@ -93,3 +86,9 @@ try:
 except Exception:
     print("Failed to update repository.", file=sys.stderr)
     input("Press Enter to Continue.")
+
+# Rebuilding starting Server
+if not is_serverOK():
+    os.system(
+        f"cd {config.codebase_server_path} && {config.npm_absolute_path} run start"
+    )

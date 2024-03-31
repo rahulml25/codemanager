@@ -91,21 +91,27 @@ if not (
         str(processOutput.strip()),
     )
 ):
+    if not config.mongoInstall_dir.exists():
+        os.makedirs(config.mongoInstall_dir)
+
     if not os.path.exists(config.mongoServerInstaller_path):
         downloadFile(config.mongoServerUrl, config.mongoServerInstaller_path)
     if not os.path.exists(config.mongoShellInstaller_path):
         downloadFile(config.mongoShellUrl, config.mongoShellInstaller_path)
 
-    os.system(config.mongoServerInstaller_path)
-    os.system(config.mongoShellInstaller_path)
+    os.system(str(config.mongoServerInstaller_path))
+    os.system(str(config.mongoShellInstaller_path))
 
 # Installing: MongoDB Tools
 processOutput = commandOutput(config.mongoTools_presenceCheck_cmd)
 
 if not (processOutput and str(processOutput).strip().startswith("mongodump version: ")):
+    if not config.mongoInstall_dir.exists():
+        os.makedirs(config.mongoInstall_dir)
+
     if not os.path.exists(config.mongoToolsInstaller_path):
         downloadFile(config.mongoToolsUrl, config.mongoToolsInstaller_path)
-    os.system(config.mongoToolsInstaller_path)
+    os.system(str(config.mongoToolsInstaller_path))
 
 
 # Cloning: CodeManager codebase
