@@ -1,35 +1,44 @@
 {
   "name": "codemanager",
   "productName": "codemanager",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "private": true,
   "keywords": [],
   "author": "Rahul Mondal",
   "license": "MIT",
   "description": "A Electron application to manage Codespaces",
-  "main": "app/background.js",
+  "main": "app_build/background.js",
   "scripts": {
-    "dev": "tsx start/development.ts",
-    "build": "tsx start/build.ts",
-    "build_installer": "pyinstaller -n codemg-install --onefile --nowindowed scripts/installer.py",
-    "postinstall": "electron-builder install-app-deps"
+    "dev": "tsx scripts/start dev",
+    "build": "tsx scripts/start build",
+    "bundle": "tsx scripts/start bundle",
+    "fullinstall": "npm i && tsx scripts/start fullinstall"
   },
   "dependencies": {
+    "archiver": "^7.0.1",
     "electron-store": "^8.2.0"
   },
   "devDependencies": {
-    "@types/cpx": "^1.5.5",
+    "@types/archiver": "^6.0.2",
     "@types/node": "^20.11.30",
-    "cpx": "^1.5.0",
     "electron": "^29.1.5",
     "electron-builder": "^24.13.3",
     "tsx": "^4.7.1",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.3",
+    "wait-on": "^7.2.0"
   },
   "build": {
     "productName": "CodeManager",
     "appId": "com.rahulml.codemanager",
     "win": {
       "target": "nsis"
+    },
+    "directories": {
+      "output": "./dist/app_${platform}"
     }
-  }
+  },
+  "workspaces": [
+    "app",
+    "client"
+  ]
 }

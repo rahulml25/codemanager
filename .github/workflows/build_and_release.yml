@@ -30,7 +30,7 @@ jobs:
 
   build:
     needs: get_tag
-    name: Build CodeManager Installer
+    name: Build CodeManager
     runs-on: windows-latest
 
     steps:
@@ -40,15 +40,28 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: "3.12.2"
+          python-version: "3.12.3"
+
+      - name: Set up Nodejs
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.12.2"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "1.1.4"
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
+          npm run fullinstall
 
-      - name: Build Executable
+      - name: Build Components
+        env:
+          MONGO_MAIN_SERVER_URL: ${{ secrets.MONGO_MAIN_SERVER_URL }}
+          MONGO_BACKUP_SERVER_URL: ${{ secrets.MONGO_BACKUP_SERVER_URL }}
         run: |
-          pyinstaller -n codemg-install --onefile --nowindowed scripts/installer.py
+          npm run build && npm run bundle
 
       - name: Create Release
         id: create_release
@@ -62,13 +75,24 @@ jobs:
             ${{ needs.get_tag.outputs.tag_message }}
             ${{ github.event.head_commit.message }}
 
-      - name: Upload Release Asset
-        id: upload-release-asset
+      - name: "Upload Release Asset: codemg-setup.exe"
+        id: upload-release-asset-1
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/codemg-install.exe # Set the path to your executable
-          asset_name: codemg-install.exe # Set the name of your executable
+          asset_path: ./dist/codemg-setup.exe # Set the path to your executable
+          asset_name: codemg-setup.exe # Set the name of your executable
           asset_content_type: application/octet-stream
+
+      - name: "Upload Release Asset: codemanager.zip"
+        id: upload-release-asset-2
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/codemanager.zip # Set the path to your executable
+          asset_name: codemanager.zip # Set the name of your executable
+          asset_content_type: application/zip
