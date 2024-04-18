@@ -19,7 +19,7 @@ const main = async () => {
       execAsync("cd client && npm run build"),
       execAsync("cd app && tsc"),
     ]);
-    execAsync("electron-builder --win");
+    execAsync("electron-builder --win -p never");
   } else if (command == "dev") {
     execAsync("cd server && bun dev");
     execAsync("cd client && npm run dev");
