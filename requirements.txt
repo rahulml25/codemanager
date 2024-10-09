@@ -1,4 +1,0 @@
-colorama==0.4.6
-pyinstaller==6.5.0
-requests==2.31.0
-psutil==5.9.8

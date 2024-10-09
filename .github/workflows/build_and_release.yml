@@ -2,13 +2,16 @@ name: CodeManager Installer Release
 
 on:
   push:
+    branches:
+      - "main"
     tags:
-      - "v*"
+      - "e*"
 
 permissions: write-all
 
 jobs:
   get_tag:
+    if: vars.PRODUCTION == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -16,13 +19,13 @@ jobs:
         id: extract_tag
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Extract Tag message
         run: |
           git fetch --tags --force
           TAG_MESSAGE=$(git tag -l --format='%(contents:subject)' ${{ steps.extract_tag.outputs.branch_tag }})
-          echo "::set-output name=branch_tag_message::$TAG_MESSAGE"
+          echo "branch_tag_message=$TAG_MESSAGE" >> $GITHUB_OUTPUT
 
     outputs:
       tag_name: ${{ steps.extract_tag.outputs.branch_tag }}
@@ -35,64 +38,88 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Cached libraries
+        id: cache-libraries
+        uses: actions/cache@v3
+        with:
+          path: |
+            .venv
+            vcpkg
+            node_modules
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-codemanager-${{ hashFiles('package.json', 'src-tauri/Cargo.lock') }}
 
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: "3.12.3"
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: scripts/requirements.txt
 
-      - name: Set up Nodejs
-        uses: actions/setup-node@v4
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
         with:
-          node-version: "20.12.2"
+          toolchain: "1.78.0" # stable
+          default: true
+          override: true
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v1
         with:
-          bun-version: "1.1.4"
+          bun-version: "1.1.13"
+
+      - name: Install OpenSSL using vcpkg
+        if: steps.cache-libraries.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $env:VCPKG_ROOT = "${{ github.workspace }}\vcpkg"
+          git clone https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
+          .\vcpkg\bootstrap-vcpkg.bat
+          .\vcpkg\vcpkg install openssl-windows:x64-windows
+          .\vcpkg\vcpkg integrate install
+
+      - name: Add OpenSSL to PATH
+        shell: pwsh
+        run: echo "${{ github.workspace }}\vcpkg\installed\x64-windows\tools\openssl" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: |
-          npm run fullinstall
+          bun pys fullinstall
+
+      - name: Build Tauri catch-dependencies
+        if: startsWith(github.ref, 'refs/heads/')
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+          OPENSSL_DIR: ${{ github.workspace }}\vcpkg\installed\x64-windows
+          VCPKGRS_DYNAMIC: 1
+
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SQLITE_DB_KEY: ${{ secrets.SQLITE_DB_KEY }}
+        run: |
+          bun tauri build
 
       - name: Build Components
+        if: startsWith(github.ref, 'refs/tags/')
         env:
-          MONGO_MAIN_SERVER_URL: ${{ secrets.MONGO_MAIN_SERVER_URL }}
-          MONGO_BACKUP_SERVER_URL: ${{ secrets.MONGO_BACKUP_SERVER_URL }}
+          VCPKG_ROOT: ${{ github.workspace }}\vcpkg
+          OPENSSL_DIR: ${{ github.workspace }}\vcpkg\installed\x64-windows
+          VCPKGRS_DYNAMIC: 1
+
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SQLITE_DB_KEY: ${{ secrets.SQLITE_DB_KEY }}
         run: |
-          npm run build && npm run bundle
+          ./.venv/Scripts/activate
+          bun pys build
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.get_tag.outputs.tag_name }} # Set your desired tag name
-          release_name: Release ${{ needs.get_tag.outputs.tag_name }} # Set your desired release name
-          body: |
-            ${{ needs.get_tag.outputs.tag_message }}
-            ${{ github.event.head_commit.message }}
-
-      - name: "Upload Release Asset: codemg-setup.exe"
-        id: upload-release-asset-1
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/codemg-setup.exe # Set the path to your executable
-          asset_name: codemg-setup.exe # Set the name of your executable
-          asset_content_type: application/octet-stream
-
-      - name: "Upload Release Asset: codemanager.zip"
-        id: upload-release-asset-2
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/codemanager.zip # Set the path to your executable
-          asset_name: codemanager.zip # Set the name of your executable
-          asset_content_type: application/zip
+          name: Release ${{ needs.get_tag.outputs.tag_name }}
+          tag_name: ${{ needs.get_tag.outputs.tag_name }}
+          body_path: CHANGELOG.md
+          files: dist/codemg-setup.exe

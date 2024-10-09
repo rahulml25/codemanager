@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+}
+
+.height_witout_border {
+  @apply h-[calc(100dvh_-_2px)];
+}
+
+.height_witout_titlebar {
+  @apply h-[calc(100dvh_-_2px_-_28px)];
+}
