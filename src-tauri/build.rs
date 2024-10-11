@@ -16,6 +16,7 @@ fn write_secrets(env_vars: Vec<&str>, file_path: &str) {
 
 fn main() {
     dotenv().ok();
+    
     let env_variables: Vec<&str> = vec!["JWT_SECRET", "SQLITE_DB_KEY"];
     write_secrets(env_variables, "src/secrets.rs");
 

@@ -1,9 +1,14 @@
 import zipfile
-import os, shutil, pathlib
+import os, sys, shutil, pathlib
 from .config import consumer as config
 from typing import TypeAlias, Literal
 
 StrOrBytesPath: TypeAlias = str | bytes | os.PathLike[str] | os.PathLike[bytes]
+
+
+# Console printing
+def eprint(*args, **kwargs):
+    return print(*args, file=sys.stderr, **kwargs)
 
 
 # Process Handeling

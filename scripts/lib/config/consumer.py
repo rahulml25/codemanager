@@ -22,18 +22,3 @@ env_SETX_path = r"C:\Windows\System32\setx.exe"
 autoStartup_registryKey_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 ############################     #-#-# Windows Config - [End] #-#-#     ############################
-
-
-#############################     #-#-# CodeManager Installation Config #-#-#     #############################
-
-# CodeManager App config
-codemanagerApp_setup_name = "codemanager.msi"
-codemanagerApp_setup_path = MEIPASS_PATH / codemanagerApp_setup_name
-
-# codemg CLI config
-codemgCLI_name = "codemg"
-codemgCLI_exe_name = f"{codemgCLI_name}.exe"
-codemgCLI_exe_init_path = MEIPASS_PATH / codemgCLI_exe_name
-codemgCLI_exe_path = EXECUTABLES_DIR / codemgCLI_exe_name
-
-#############################     #-#-# Codemanager Installation Config - [END] #-#-#     #############################

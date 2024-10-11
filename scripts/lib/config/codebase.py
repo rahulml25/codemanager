@@ -1,6 +1,5 @@
 import json
 from . import Path
-from .consumer import codemanagerApp_setup_name, codemgCLI_name, codemgCLI_exe_name
 
 
 CODEBASE_DIR = Path.cwd()
@@ -17,37 +16,42 @@ python_path = PYTHON_VENV_SCRIPTS_DIR / "python.exe"
 pip_path = PYTHON_VENV_SCRIPTS_DIR / "pip.exe"
 pyinstaller_path = PYTHON_VENV_SCRIPTS_DIR / "pyinstaller.exe"
 
-secrets_path = BUILD_DIR / ".env"
+secrets_build_path = BUILD_DIR / ".env"
 
 # Tauri Config
 tauri_conf_path = TAURI_DIR / "tauri.conf.json"
-tauri_msi_dir = TAURI_DIR / "target/release/bundle/msi"
+tauri_release_dir = TAURI_DIR / "target/release"
 
 
 # Tauri Package Config
 with open(tauri_conf_path) as f:
-    tauri_conf_package = json.load(f)["package"]
+    tauri_conf_data = json.load(f)
+    tauri_conf_package = tauri_conf_data["package"]
+    tauri_conf_bundle = tauri_conf_data["tauri"]["bundle"]
 
+app_manufacturer = "cloutcoders"
 app_name = tauri_conf_package["productName"]
 app_version = tauri_conf_package["version"]
+app_identifier = tauri_conf_bundle["identifier"]
 
 
 #############################     #-#-# CodeManager Build Config #-#-#     #############################
 
 # CodeManager-App config
-codemanagerApp_setup_init_path = (
-    tauri_msi_dir / f"{app_name}_{app_version}_x64_en-US.msi"
-)
-codemanagerApp_setup_path = DIST_DIR / codemanagerApp_setup_name
+codemanagerApp_exe_name = "codemanager.exe"
+codemanagerApp_exe_path = tauri_release_dir / codemanagerApp_exe_name
 
 # codemg-CLI config
+codemgCLI_name = "codemg"
+codemgCLI_exe_name = f"{codemgCLI_name}.exe"
 codemgCLI_source = SCRIPTS_DIR / "codemg_cli.py"
 codemgCLI_exe_path = DIST_DIR / codemgCLI_exe_name
 
 # Config: CodeManager-Setup
 codemanagerSetup_name = "codemg-setup"
-codemanagerSetup_exe_name = f"{codemanagerSetup_name}.exe"
-codemanagerSetup_source = SCRIPTS_DIR / "setup.py"
-codemanagerSetup_exe_path = DIST_DIR / codemanagerSetup_exe_name
+codemanagerSetup_msi_name = f"{codemanagerSetup_name}.msi"
+codemanagerSetup_source = CODEBASE_DIR / "wix/codemg-setup.wsx"
+codemanagerSetup_msi_path = DIST_DIR / codemanagerSetup_msi_name
+codemanagerSCC_sidecar_path = tauri_release_dir / "scc.exe"
 
 #############################     #-#-# CodeManager Build Config #-#-#     #############################

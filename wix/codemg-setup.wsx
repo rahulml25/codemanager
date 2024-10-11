@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+<!- - AppInfo - ->
+<?define appName = "codemanager"?>
+<?define appVersion = "0.0.3"?>
+<?define appManufacturer = "cloutcoders"?>
+<?define appIdentifier = "com.cloutcoders.codemg"?>
+<?define upgradeCode = "d60676d2-cfae-48f9-afdb-6fdd615006f3"?>
+
+<!- - Components Info - ->
+<?define iconPath = "C:\Code\Rust\codemanager\src-tauri\icons\icon.ico"?>
+<?define codemgCLIPath = "C:\Code\Rust\codemanager\dist\codemg.exe"?>
+<?define codemamagerPath = "C:\Code\Rust\codemanager\src-tauri\target\release\codemanager.exe"?>
+<?define sccSidecarPath = "C:\Code\Rust\codemanager\src-tauri\target\release\scc.exe"?>
+-->
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" RequiredVersion="4.0">
+	<Package Name="$(var.appName)" Manufacturer="$(var.appManufacturer)" Version="$(var.appVersion)"
+		UpgradeCode="$(var.upgradeCode)" Scope="perUser" InstallerVersion="500"
+		Compressed="yes">
+		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+			AllowSameVersionUpgrades="no" />
+
+		<Media Id="1" EmbedCab="yes" Cabinet="app.cab" />
+		<SetDirectory Id="USERPROFILEFOLDER" Value="[%USERPROFILE]" />
+		<Icon Id="CodemanagerIcon" SourceFile="$(var.iconPath)" />
+		<Property Id="ARPPRODUCTICON" Value="CodemanagerIcon" />
+
+		<Property Id="ARPNOREPAIR" Value="yes" Secure="yes" /> <!-- No Repair -->
+		<SetProperty Id="ARPNOMODIFY" Value="1" After="InstallValidate" Sequence="execute" />
+
+		<Directory Id="USERPROFILEFOLDER">
+			<Directory Id="CodeMgFolder" Name=".codemg">
+				<Directory Id="BinFolder" Name="bin">
+					<Component Id="CodemgCLI" Guid="8bd0b3e9-21c3-434c-8d71-ffce8459eb28">
+						<File Id="CodemgFile" Source="$(var.codemgCLIPath)" />
+						<Environment Id="PathUpdate" Name="PATH" Value="[BinFolder]" Action="set"
+							Part="last" Permanent="no" Separator=";" />
+						<RegistryKey Root="HKCU" Key="Software\[Manufacturer]\[ProductName]">
+							<RegistryValue Name="BinPath" Type="string" Value="[BinFolder]"
+								KeyPath="yes" />
+						</RegistryKey>
+					</Component>
+
+					<Directory Id="UtilsFolder" Name="utils">
+						<Component Id="CodemanagerUtils" Guid="e95d805d-dc82-45be-9be4-e34c41eb10fc">
+							<File Id="CodemanagerFile"
+								Source="$(var.codemamagerPath)">
+								<!-- App Shortcuts -->
+								<Shortcut Id="DesktopCodemanagerShortcut" Name="codemanager"
+									Icon="CodemanagerIcon" Description="A codebases manager"
+									Directory="DesktopFolder" WorkingDirectory="CodeMgFolder" />
+								<Shortcut Id="StartMenuCodemanagerShortcut" Name="codemanager"
+									Icon="CodemanagerIcon" Description="A codebases manager"
+									Directory="ProgramMenuFolder" WorkingDirectory="CodeMgFolder">
+									<ShortcutProperty Key="System.AppUserModel.ID"
+										Value="$(var.appIdentifier)" />
+								</Shortcut>
+							</File>
+							<File Id="SccFile"
+								Source="$(var.sccSidecarPath)" />
+							<RegistryKey Root="HKCU" Key="Software\[Manufacturer]\[ProductName]">
+								<RegistryValue Name="InstallPath" Type="string"
+									Value="[UtilsFolder]" KeyPath="yes" />
+							</RegistryKey>
+						</Component>
+
+						<!-- Removing UtilsFolder on uninstall -->
+						<Component Id="UtilsFolderRemove"
+							Guid="645ff3ce-9b32-4157-86fe-35a4074ae3a8">
+							<RemoveFolder Id="RemoveUtilsFolder" On="uninstall" />
+							<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]"
+								Name="Remove utils" Type="integer" Value="1" KeyPath="yes" />
+						</Component>
+					</Directory>
+
+					<!-- Removing BinFolder on uninstall -->
+					<Component Id="BinFolderRemove" Guid="111cc7c9-ffaf-41ce-b1e3-1def06678729">
+						<RemoveFolder Id="RemoveBinFolder" On="uninstall" />
+						<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]"
+							Name="Remove bin" Type="integer" Value="1" KeyPath="yes" />
+					</Component>
+				</Directory>
+
+				<!-- Removing CodeMgFolder on uninstall -->
+				<Component Id="CodeMgFolderRemove" Guid="1b0b99b0-0bce-4390-a4cf-952808f1e9e2">
+					<RemoveFolder Id="RemoveCodeMgFolder" On="uninstall" />
+					<RegistryValue Root="HKCU" Key="Software\[Manufacturer]\[ProductName]"
+						Name="Remove .codemg" Type="integer" Value="1" KeyPath="yes" />
+				</Component>
+			</Directory>
+		</Directory>
+
+
+		<Feature Id="ProductFeature" Title="CodemanagerApp" Level="1">
+			<ComponentRef Id="CodemgCLI" />
+			<ComponentRef Id="CodemanagerUtils" />
+
+			<ComponentRef Id="CodeMgFolderRemove" />
+			<ComponentRef Id="BinFolderRemove" />
+			<ComponentRef Id="UtilsFolderRemove" />
+		</Feature>
+
+	</Package>
+</Wix>

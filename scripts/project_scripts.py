@@ -1,7 +1,20 @@
-import os, sys, shutil
+from typing import Literal
+import os, sys, pathlib
 import lib.config.codebase as config
 from lib.config.consumer import signing_key_name
-from lib.utils import run_command
+from lib.utils import run_command, eprint
+
+
+def build_component(
+    name: str,
+    command: list[str | pathlib.Path],
+    output: Literal["shell", "none"] = "none",
+):
+    print(f"Generating {name}...", end="", flush=True)
+    if run_command(command, output):
+        eprint("\nBuild Abroaded.")
+        exit(1)
+    print("done.")
 
 
 def build_codemg_setup():
@@ -12,11 +25,12 @@ def build_codemg_setup():
         os.makedirs(config.BUILD_DIR)
 
     # Writing seperate Secrets file for production
-    with open(config.secrets_path, "w") as file:
+    with open(config.secrets_build_path, "w") as file:
         file.write(f'{signing_key_name}="{os.environ.get(signing_key_name)}"')
 
     # Making: codemg-CLI
-    run_command(
+    build_component(
+        "codemg cli",
         [
             config.pyinstaller_path,
             config.codemgCLI_source,
@@ -28,36 +42,45 @@ def build_codemg_setup():
             #
             # Secrets
             "--add-data",
-            f"{config.secrets_path}:./",
+            f"{config.secrets_build_path}:./",
         ],
-        output="none",
     )
 
-    # Making: CodeManager-App
-    run_command(["bun", "tauri", "build"])
-    shutil.copy2(
-        config.codemanagerApp_setup_init_path,
-        config.codemanagerApp_setup_path,
-    )
+    # Making: CodeManager
+    build_component("CodeManager", ["bun", "tauri", "build"], "shell")
 
-    # Making: CodeManager-Setup
-    run_command(
+    # Making: codemg-Setup
+    upgradeCode = os.environ.get("UPGRADE_CODE")
+    build_component(
+        "codemg-setup executable",
         [
-            config.pyinstaller_path,
+            "wix",
+            "build",
             config.codemanagerSetup_source,
-            "-n",
-            config.codemanagerSetup_name,
-            "--onefile",
-            "--specpath",
-            config.BUILD_DIR,
+            "-o",
+            config.codemanagerSetup_msi_path,
             #
-            # CLI
-            "--add-binary",
-            f"{config.codemgCLI_exe_path}:./",
+            # App Info
+            "-d",
+            f"appName={config.app_name}",
+            "-d",
+            f"appVersion={config.app_version}",
+            "-d",
+            f"appManufacturer={config.app_manufacturer}",
+            "-d",
+            f"appIdentifier={config.app_identifier}",
+            "-d",
+            f"upgradeCode={upgradeCode}",
             #
-            # App
-            "--add-binary",
-            f"{config.codemanagerApp_setup_path}:./",
+            # Components Info
+            "-d",
+            f"iconPath={config.codemanagerApp_exe_path}",
+            "-d",
+            f"codemgCLIPath={config.codemgCLI_exe_path}",
+            "-d",
+            f"codemamagerPath={config.codemanagerApp_exe_path}",
+            "-d",
+            f"sccSidecarPath={config.codemanagerSCC_sidecar_path}",
         ],
     )
 

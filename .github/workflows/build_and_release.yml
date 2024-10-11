@@ -4,8 +4,10 @@ on:
   push:
     branches:
       - "main"
+      - "development"
     tags:
-      - "e*"
+      - "v*"
+      - "beta-*"
 
 permissions: write-all
 
@@ -72,6 +74,11 @@ jobs:
         with:
           bun-version: "1.1.13"
 
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: "x64"
+
       - name: Install OpenSSL using vcpkg
         if: steps.cache-libraries.outputs.cache-hit != 'true'
         shell: pwsh
@@ -88,22 +95,10 @@ jobs:
 
       - name: Install dependencies
         run: |
+          dotnet tool install --global wix
           bun pys fullinstall
 
-      - name: Build Tauri catch-dependencies
-        if: startsWith(github.ref, 'refs/heads/')
-        env:
-          VCPKG_ROOT: ${{ github.workspace }}\vcpkg
-          OPENSSL_DIR: ${{ github.workspace }}\vcpkg\installed\x64-windows
-          VCPKGRS_DYNAMIC: 1
-
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          SQLITE_DB_KEY: ${{ secrets.SQLITE_DB_KEY }}
-        run: |
-          bun tauri build
-
       - name: Build Components
-        if: startsWith(github.ref, 'refs/tags/')
         env:
           VCPKG_ROOT: ${{ github.workspace }}\vcpkg
           OPENSSL_DIR: ${{ github.workspace }}\vcpkg\installed\x64-windows
@@ -111,6 +106,7 @@ jobs:
 
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           SQLITE_DB_KEY: ${{ secrets.SQLITE_DB_KEY }}
+          UPGRADE_CODE: ${{ vars.UPGRADE_CODE }}
         run: |
           ./.venv/Scripts/activate
           bun pys build
@@ -122,4 +118,4 @@ jobs:
           name: Release ${{ needs.get_tag.outputs.tag_name }}
           tag_name: ${{ needs.get_tag.outputs.tag_name }}
           body_path: CHANGELOG.md
-          files: dist/codemg-setup.exe
+          files: dist/codemg-setup.msi
