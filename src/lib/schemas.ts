@@ -32,6 +32,7 @@ export const projectSchema = z
     id: IdSchema,
     // _createdAt: z.string().min(1).datetime(),
     _createdAt: ISODatetimeSchema,
+    _isRelocateable: z.boolean(),
   })
   .merge(projectCreateSchema);
 

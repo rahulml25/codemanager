@@ -1,5 +1,6 @@
-from dataclasses import dataclass, asdict
+from pathlib import Path
 from typing import Callable, TypedDict
+from dataclasses import dataclass, asdict
 
 
 @dataclass
@@ -35,9 +36,9 @@ class Templates[TEMPLATE]:
 class JS_PACKAGE_MANAGER:
     package_manager: str
     package_executor: str
-    install_cmd: str
-    dev_install_cmd: str
-    install_all_cmd: str
+    install_cmd: list[str | Path]
+    dev_install_cmd: list[str | Path]
+    install_all_cmd: list[str | Path]
 
 
 @dataclass

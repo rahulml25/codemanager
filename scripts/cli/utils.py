@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from colorama import Style
+from lib.utils import run_command
 
 
 def create_directory(directory_path: str | Path):
@@ -8,16 +9,22 @@ def create_directory(directory_path: str | Path):
         os.makedirs(directory_path)
 
 
+def write_to_file(file_path: str | Path, content: str):
+    with open(file_path, "w") as file:
+        file.write(content)
+
+
 def create_python_enviromment(destination_path: str | Path):
     environment_path = os.path.join(destination_path, ".venv")
-    os.system(f"python -m venv {environment_path}")
+    run_command(["python", "-m", "venv", environment_path])
 
 
-def open_with_code(directory_name: str, reuse_current: bool):
+def open_with_code(directory_path: str, reuse_current: bool):
+    path = Path(directory_path).resolve()
     if reuse_current:
-        os.system(f"code -r {directory_name}")
+        run_command(["code", "-r", directory_path])
     else:
-        os.system(f"code {directory_name}")
+        run_command(["code", directory_path])
 
 
 def reset_terminal_colors():

@@ -4,7 +4,7 @@ import { VscRunAbove } from "react-icons/vsc";
 import templates, { TemplateShow } from "@/lib/options/templates";
 import { currentProject, dialogs, projects } from "@/lib/signals";
 import type { Project } from "@/lib/schemas";
-import { classNames } from "@/lib/utils";
+import { classNames, openInVSCode } from "@/lib/utils";
 
 type Props = {
   id: Project["id"];
@@ -27,6 +27,11 @@ export default function ProjectCard({
     }
   }
 
+  function handleOpenInVSCode() {
+    const project = projects.value.find((project) => project.id == id);
+    if (project) return openInVSCode(project);
+  }
+
   return (
     <div className="group rounded-2xl bg-neutral-900 px-4 pb-3 pt-2">
       <div className="flex">
@@ -42,7 +47,7 @@ export default function ProjectCard({
             <RiCodeView className="-rotate-45" />
           </button>
           <button className="rounded-md bg-neutral-800 p-1 hover:bg-opacity-85">
-            <VscRunAbove />
+            <VscRunAbove onClick={handleOpenInVSCode} />
           </button>
         </div>
       </div>

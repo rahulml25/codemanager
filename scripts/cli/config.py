@@ -11,32 +11,32 @@ class JS_PACKAGE_MANAGERS(Enum):
     npm = JS_PACKAGE_MANAGER(
         package_manager="npm",
         package_executor="npx",
-        install_cmd="npm i",
-        dev_install_cmd="npm i -D",
-        install_all_cmd="npm i",
+        install_cmd=["npm", "i"],
+        dev_install_cmd=["npm", "i", "-D"],
+        install_all_cmd=["npm", "i"],
     )
     yarn = JS_PACKAGE_MANAGER(
         package_manager="yarn",
         package_executor="yarn",
-        install_cmd="yarn add",
-        dev_install_cmd="yarn add -D",
-        install_all_cmd="yarn",
+        install_cmd=["yarn", "add"],
+        dev_install_cmd=["yarn", "add", "-D"],
+        install_all_cmd=["yarn"],
     )
     pnpm = JS_PACKAGE_MANAGER(
         package_manager="pnpm",
         package_executor="pnpx",
-        install_cmd="pnpm i",
-        dev_install_cmd="pnpm i -D",
-        install_all_cmd="pnpm i",
+        install_cmd=["pnpm", "i"],
+        dev_install_cmd=["pnpm", "i", "-D"],
+        install_all_cmd=["pnpm", "i"],
     )
 
     if OPERATING_SYSTEM in ("Linux", "Darwin"):
         bun = JS_PACKAGE_MANAGER(
             package_manager="bun",
             package_executor="bunx",
-            install_cmd="bun install",
-            dev_install_cmd="bun install -D",
-            install_all_cmd="bun install",
+            install_cmd=["bun", "install"],
+            dev_install_cmd=["bun", "install", "-D"],
+            install_all_cmd=["bun", "install"],
         )
 
     @staticmethod

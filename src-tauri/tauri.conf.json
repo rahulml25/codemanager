@@ -15,9 +15,16 @@
       "all": false,
       "shell": {
         "all": false,
-        "open": true,
+        "execute": true,
         "sidecar": true,
-        "scope": [{ "name": "bin/scc", "sidecar": true }]
+        "scope": [
+          { "name": "bin/scc", "sidecar": true },
+          { "name": "open_vscode", "cmd": "code.cmd", "args": [{ "validator": "^(?:[a-zA-Z]:)?(\\\\|\\/)([a-zA-Z0-9_\\-\\. ]+(\\\\|\\/)?)+$" }] }
+        ]
+      },
+      "dialog": {
+        "all": false,
+        "open": true
       },
       "window": {
         "all": false,

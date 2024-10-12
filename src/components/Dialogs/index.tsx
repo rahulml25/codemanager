@@ -7,6 +7,7 @@ import { useSignals } from "@preact/signals-react/runtime";
 
 import ProjectEditor from "./ProjectEditor";
 import { titlebarElement } from "../Titlebar";
+import ProjectRelocator from "./ProjectRelocator";
 import AskBoxDialog, { openAskBox } from "./AskBox";
 import ProjectView, { previousProjectsCatches } from "./ProjectView";
 import DefaultProjectSelector from "./DefaultProjectSelector";
@@ -24,16 +25,22 @@ export default function Dialogs({}: Props) {
         "bg-black-50/5 absolute bottom-0 left-0 right-0 top-0 z-10 items-center bg-blend-saturation backdrop-blur-[1px]",
       )}
     >
-      {dialogs.project.value && <ProjectDialogBase />}
+      {currentProject.value !== null && dialogs.project.value && (
+        <ProjectDialogBase />
+      )}
       {dialogs.askBox.value && <AskBoxDialog />}
     </div>
   );
 }
 
+type DialogMode = "view" | "editor" | "relocator";
+
 function ProjectDialogBase({}: {}) {
   useSignals();
   const divRef = useRef<HTMLDivElement>(null);
-  const [dialogMode, setDialogMode] = useState<"view" | "editor">("view");
+  const [dialogMode, setDialogMode] = useState<DialogMode>(() =>
+    !currentProject.value!._isRelocateable ? "view" : "relocator",
+  );
   const [previousProject, setPreviousProject] = useState<Project | null>(null);
 
   function openEditMode() {
@@ -41,6 +48,14 @@ function ProjectDialogBase({}: {}) {
   }
 
   function closeEditMode() {
+    setDialogMode("view");
+  }
+
+  function openRelocatorMode() {
+    setDialogMode("relocator");
+  }
+
+  function closeRelocatorMode() {
     setDialogMode("view");
   }
 
@@ -66,7 +81,7 @@ function ProjectDialogBase({}: {}) {
 
     if (choosenValue === 1) {
       const currentDefaultId = currentProject.value!.id;
-      invoke<AppResponse<boolean>>("delete_previousProject_onpath", {
+      invoke<AppResponse<boolean, string>>("delete_previousProject_onpath", {
         currentDefaultId,
         previousProjectId: previousProject.id,
         path: previousProject.path,
@@ -120,7 +135,7 @@ function ProjectDialogBase({}: {}) {
       {dialogMode == "view" &&
         (previousProject == null ? (
           <ProjectView
-            {...{ openEditMode, openInView }}
+            {...{ openEditMode, openInView, openRelocatorMode }}
             deletePrevProject={deletePreviousProject}
           />
         ) : (
@@ -132,6 +147,9 @@ function ProjectDialogBase({}: {}) {
         ))}
       {dialogMode == "editor" && (
         <ProjectEditor closeEditMode={closeEditMode} />
+      )}
+      {dialogMode == "relocator" && (
+        <ProjectRelocator {...{ closeRelocatorMode }} />
       )}
     </div>
   );

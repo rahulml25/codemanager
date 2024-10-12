@@ -1,7 +1,9 @@
-import os
+import os, pathlib
+from lib.utils import run_command
 from cli.args_parser import get_cli_args
 from cli.config import PROJECT_TEMPLATES
 from cli.utils import open_with_code
+from cli.db_functions import create_project_db
 
 
 args = get_cli_args()
@@ -67,7 +69,24 @@ if args.command == "create":
 
     # Additional functionalities
     if args.git:
-        os.system(rf"git init {args.directory}")
+        run_command(["git", "init", args.directory])
 
     if not args.nc:
         open_with_code(args.directory, args.rc)
+
+
+elif args.command == "add":
+    project_template = PROJECT_TEMPLATES.get_template(args.template)
+
+    if project_template is None:
+        raise Exception(f"Project type '{args.template}' not supported.")
+
+    if not os.path.exists(args.directory):
+        raise Exception(f"Project directory '{args.directory}' doesn't exist.")
+
+    directory_path = pathlib.Path(args.directory).resolve()
+    create_project_db(
+        directory_path.name,
+        os.path.abspath(directory_path),
+        args.template,
+    )

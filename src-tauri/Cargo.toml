@@ -13,6 +13,7 @@ dotenv = "0.15.0"
 
 [dependencies]
 tauri = { version = "1", features = [
+    "dialog-open",
     "window-close",
     "window-hide",
     "window-unminimize",
@@ -21,7 +22,7 @@ tauri = { version = "1", features = [
     "window-show",
     "window-minimize",
     "window-maximize",
-    "shell-open",
+    "shell-execute",
     "shell-sidecar",
     "process-command-api",
 ] }

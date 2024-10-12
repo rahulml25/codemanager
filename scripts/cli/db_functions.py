@@ -17,6 +17,13 @@ new_projects_dir = codebases_new_entries_dir
 secrets = dotenv_values(secrets_path)
 
 
+def generate_adder_id():
+    adder_uuid = uuid.uuid4()
+    adder_spawn_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f %Z")
+    adder_id = f"{adder_uuid}_<a:r:i:d>_{adder_spawn_time}"
+    return adder_id
+
+
 def create_project_db(
     name: str,
     path: str,
@@ -24,12 +31,7 @@ def create_project_db(
 ):
 
     try:
-        adder_uuid = uuid.uuid4()
-        adder_spawn_time = datetime.now(timezone.utc).strftime(
-            "%Y-%m-%d %H:%M:%S.%f %Z"
-        )
-        adder_id = f"{adder_uuid}_<a:r:i:d>_{adder_spawn_time}"
-
+        adder_id = generate_adder_id()
         new_project = NewProject(name, template, path, adder_id)
         project_data = new_project.json()
 

@@ -42,37 +42,52 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cached libraries
-        id: cache-libraries
-        uses: actions/cache@v3
+      - name: Cached Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-python-${{ hashFiles('scripts/requirements.txt') }}
+
+      - name: Cached Vcpkg libraries
+        id: cache-vcpkg
+        uses: actions/cache@v4
+        with:
+          path: vcpkg
+          key: ${{ runner.os }}-vcpkg
+
+      - name: Cached Node dependencies
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('bun.lockb') }}
+
+      - name: Cached Rust & Tauri dependencies
+        uses: actions/cache@v4
         with:
           path: |
-            .venv
-            vcpkg
-            node_modules
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-codemanager-${{ hashFiles('package.json', 'src-tauri/Cargo.lock') }}
+          key: ${{ runner.os }}-rust-${{ hashFiles('src-tauri/Cargo.lock') }}
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "pip"
           cache-dependency-path: scripts/requirements.txt
 
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@v1.0.6
         with:
           toolchain: "1.78.0" # stable
           default: true
           override: true
 
       - name: Set up Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.1.13"
+          bun-version: "1.1.30"
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@v2
@@ -80,7 +95,7 @@ jobs:
           msbuild-architecture: "x64"
 
       - name: Install OpenSSL using vcpkg
-        if: steps.cache-libraries.outputs.cache-hit != 'true'
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $env:VCPKG_ROOT = "${{ github.workspace }}\vcpkg"

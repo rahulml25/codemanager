@@ -1,5 +1,7 @@
-Codemanager installer `codemg-setup.msi` using `WiX Toolset v5`. ✨🎉
+**Features Added**: Project relocation, add existing, open in vs code.
 
-- Generating custom `codemg-setup.msi` installer using `wix toolset`.
-- Python scripts Error printing into `stderr` stream.
-- In-activated Tauri bundle creation: `msi, nish`.
+- Added `relocate` feature in `codemanager` for missing projects.
+- Added `add` command in `codemg` to add existing projects.
+- Added `open_with_vscode` feature in `codemanager` to open an project in VSCode.
+- Saving different dependency `build caches` separately, in GitHub Actions.
+- *Fixed some command related bugs in `python scripts`.

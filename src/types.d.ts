@@ -9,7 +9,12 @@ type Option = {
   icon?: React.FunctionComponent<iconProps>;
 };
 
-type AppResponse<T> = {
-  data: T;
-  success: bool;
-};
+type AppResponse<T, S> =
+  | {
+      data: T;
+      success: true;
+    }
+  | {
+      data: S;
+      success: false;
+    };

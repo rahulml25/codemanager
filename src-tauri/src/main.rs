@@ -29,9 +29,9 @@ fn main() {
             // create_project,
             update_project,
             mesure_codebase,
+            relocate_project,
             change_defaultProject_onpath,
             delete_previousProject_onpath,
-            // _mew,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

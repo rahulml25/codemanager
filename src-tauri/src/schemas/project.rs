@@ -109,6 +109,7 @@ pub struct Project {
     )]
     pub _createdAt: DateTime<Utc>,
     pub _isActive: bool,
+    pub _isRelocateable: bool,
 }
 
 fn serialize_datetime<S>(value: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
@@ -167,6 +168,7 @@ impl Project {
             description,
             _createdAt: Utc::now(),
             _isActive: true,
+            _isRelocateable: false,
         })
     }
 

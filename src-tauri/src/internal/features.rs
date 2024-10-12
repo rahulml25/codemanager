@@ -20,7 +20,7 @@ pub fn get_projects() -> Vec<Project> {
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, template, path, description, _createdAt, _isActive
+            "SELECT id, name, template, path, description, _createdAt, _isActive, _isRelocateable
                 FROM projects
                 WHERE _isActive == ?1
             ",
@@ -40,6 +40,7 @@ pub fn get_projects() -> Vec<Project> {
                     .unwrap()
                     .to_utc(),
                 _isActive: row.get(6)?,
+                _isRelocateable: row.get(7)?,
             })
         })
         .unwrap()
@@ -49,18 +50,44 @@ pub fn get_projects() -> Vec<Project> {
     projects
 }
 
+#[allow(non_snake_case)]
 #[tauri::command]
-pub fn get_previous_projects(path: &str) -> Result<AppResponse<Vec<Project>>, AppResponse<String>> {
+pub fn get_previous_projects(
+    currentDefaultId: String,
+) -> Result<AppResponse<Vec<Project>>, AppResponse<String>> {
     let conn = open_encrypted_db().unwrap();
     secure_projects_table(&conn);
 
-    if !Path::new(path).exists() {
+    let mut stmt = conn
+        .prepare(
+            "SELECT path FROM projects
+                WHERE id == ?1 AND _isActive == ?2",
+        )
+        .unwrap();
+    let does_exists = stmt.exists(params![currentDefaultId, true]).unwrap();
+
+    if !does_exists {
+        return Err(AppResponse::new_err(format!("project doesn't exist")));
+    }
+
+    let path = stmt
+        .query_row(params![currentDefaultId, true], |row| {
+            row.get::<usize, String>(0)
+        })
+        .unwrap();
+
+    if !Path::new(&path).exists() {
+        conn.execute(
+            "UPDATE projects SET _isRelocateable = ?1 WHERE id == ?2",
+            params![true, currentDefaultId],
+        )
+        .unwrap();
         return Err(AppResponse::new_err("Path does not exists".to_string()));
     }
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, template, path, description, _createdAt, _isActive
+            "SELECT id, name, template, path, description, _createdAt, _isActive, _isRelocateable
                 FROM projects
                 WHERE path == ?1 AND _isActive == ?2
             ",
@@ -80,6 +107,7 @@ pub fn get_previous_projects(path: &str) -> Result<AppResponse<Vec<Project>>, Ap
                     .unwrap()
                     .to_utc(),
                 _isActive: row.get(6)?,
+                _isRelocateable: row.get(7)?,
             })
         })
         .unwrap()
@@ -105,7 +133,7 @@ pub fn _create_project(
     let already_exists = stmt.exists(params![path, true]).unwrap();
 
     if already_exists {
-        return Err(AppResponse::new_err("duplicate path".to_string()));
+        return Err(AppResponse::new_err(format!("duplicate path")));
     };
 
     let new_project = match Project::new(name, template, path, description) {
@@ -114,7 +142,7 @@ pub fn _create_project(
     };
 
     conn.execute(
-        "INSERT INTO projects (id, name, template, path, description, _createdAt, _isActive) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO projects (id, name, template, path, description, _createdAt, _isActive, _isRelocateable) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             new_project.id.clone(),
             new_project.name.clone(),
@@ -123,6 +151,7 @@ pub fn _create_project(
             new_project.description.clone(),
             new_project._createdAt.to_rfc3339(),
             new_project._isActive,
+            new_project._isRelocateable,
         ],
     )
     .unwrap();
@@ -141,7 +170,7 @@ pub fn update_project(project: Project) -> Result<AppResponse<Project>, AppRespo
     let does_exists = stmt.exists(params![project.id]).unwrap();
 
     if !does_exists {
-        return Err(AppResponse::new_err(format!("project doesn't exists")));
+        return Err(AppResponse::new_err(format!("project doesn't exist")));
     }
 
     // Verify Project
@@ -165,6 +194,56 @@ pub fn update_project(project: Project) -> Result<AppResponse<Project>, AppRespo
     .unwrap();
 
     Ok(AppResponse::new_ok(project))
+}
+
+/**
+ * Relocate missing Project path
+ */
+#[allow(non_snake_case)]
+#[tauri::command]
+pub fn relocate_project(
+    projectId: String,
+    newPath: String,
+) -> Result<AppResponse<bool>, AppResponse<String>> {
+    if !Path::new(&newPath).exists() {
+        return Err(AppResponse::new_err(format!("given path doesn't exist")));
+    }
+
+    let conn = open_encrypted_db().unwrap();
+    secure_projects_table(&conn);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT path FROM projects
+                    WHERE id == ?1 AND _isActive == ?2 AND _isRelocateable == ?3",
+        )
+        .unwrap();
+    let does_exists = stmt.exists(params![projectId, true, true]).unwrap();
+
+    if !does_exists {
+        return Err(AppResponse::new_err(format!("project doesn't exist")));
+    }
+
+    let oldPath = stmt
+        .query_row(params![projectId, true, true], |row| {
+            row.get::<usize, String>(0)
+        })
+        .unwrap();
+
+    let oldPath = Path::new(&oldPath);
+    if oldPath.exists() {
+        return Err(AppResponse::new_err(format!("old path already exists")));
+    }
+
+    conn.execute(
+        "UPDATE projects
+            SET path = ?1, _isRelocateable = ?2
+            WHERE id == ?3",
+        params![newPath, false, projectId],
+    )
+    .unwrap();
+
+    Ok(AppResponse::new_ok(true))
 }
 
 #[allow(non_snake_case)]

@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { invoke } from "@tauri-apps/api";
 import { useEffect, useState } from "react";
 import { signal } from "@preact/signals-core";
-import { classNames, time } from "@/lib/utils";
+import { classNames, openInVSCode, time } from "@/lib/utils";
 
 import { Project } from "@/lib/schemas";
 import { currentProject } from "@/lib/signals";
@@ -18,6 +18,7 @@ type Props = {
   openEditMode(): void;
   openInView(project: Project): void;
   deletePrevProject(project: Project): void;
+  openRelocatorMode(): void;
 };
 
 type PreviousProjectsCatches = { [key: string]: Project[] };
@@ -27,6 +28,7 @@ export default function ProjectView({
   openInView,
   openEditMode,
   deletePrevProject,
+  openRelocatorMode,
 }: Props) {
   useSignals();
   const project = currentProject.value!;
@@ -42,34 +44,18 @@ export default function ProjectView({
   useEffect(() => {
     type language_map = { [k: string]: number };
 
-    // Measuring Codebase
-    (async () => {
-      const res = await invoke<AppResponse<[language_map, number]>>(
-        "mesure_codebase",
-        { path: project.path },
-      );
-
-      if (!res.success) return;
-
-      const [languages, _total_code] = res.data;
-      let sorted_languages = Object.entries(languages)
-        .sort(([_, a], [, b]) => b - a)
-        .slice(0, 3);
-
-      setSortedLanguages(sorted_languages);
-      setMeasuringCodebase(false);
-    })();
-
     // Previous Projects at Path
     (async () => {
       if (!!previousProjectsCatches.value[project.id]) return;
 
-      const res = await invoke<AppResponse<Project[]>>(
-        "get_previous_projects",
-        { path: project.path },
-      );
+      const res = (await invoke("get_previous_projects", {
+        currentDefaultId: project.id,
+      }).catch((res) => res)) as AppResponse<Project[], string>;
 
-      if (!res.success) return;
+      if (!res.success) {
+        if (res.data === "Path does not exists") return openRelocatorMode();
+        return;
+      }
 
       const previousProjects_sorted = res.data.sort(
         (a, b) => time(a._createdAt) - time(b._createdAt),
@@ -80,6 +66,24 @@ export default function ProjectView({
         [project.id]: previousProjects_sorted,
       };
       setPreviousProjects(previousProjects_sorted);
+    })();
+
+    // Measuring Codebase
+    (async () => {
+      const res = (await invoke<AppResponse<[language_map, number], string>>(
+        "mesure_codebase",
+        { path: project.path },
+      ).catch((res) => res)) as AppResponse<[language_map, number], string>;
+
+      if (!res.success) return;
+
+      const [languages, _total_code] = res.data;
+      let sorted_languages = Object.entries(languages)
+        .sort(([_, a], [, b]) => b - a)
+        .slice(0, 3);
+
+      setSortedLanguages(sorted_languages);
+      setMeasuringCodebase(false);
     })();
   }, []);
 
@@ -96,7 +100,7 @@ export default function ProjectView({
             <MdEdit />
           </button>
           <button className="rounded-md bg-neutral-800 p-1 hover:bg-opacity-85">
-            <VscRunAbove />
+            <VscRunAbove onClick={() => openInVSCode(project)} />
           </button>
         </div>
       </div>

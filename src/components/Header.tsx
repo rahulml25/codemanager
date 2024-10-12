@@ -1,6 +1,8 @@
+import { useState } from "react";
+import { classNames } from "@/lib/utils";
+import { invoke } from "@tauri-apps/api/tauri";
 import { filters, projects } from "@/lib/signals";
 import { useSignals } from "@preact/signals-react/runtime";
-import { invoke } from "@tauri-apps/api/tauri";
 
 import { FiRefreshCw } from "react-icons/fi";
 import type { Project } from "@/lib/schemas";
@@ -8,9 +10,13 @@ import type { Project } from "@/lib/schemas";
 type Props = {};
 
 export default function Header({}: Props) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   async function fetchProjects() {
+    setIsRefreshing(true);
     const fetchedProjects: Project[] = await invoke("get_projects");
     projects.value = fetchedProjects;
+    setIsRefreshing(false);
   }
 
   return (
@@ -23,7 +29,7 @@ export default function Header({}: Props) {
           onClick={fetchProjects}
         >
           <span>Refresh</span>
-          <FiRefreshCw />
+          <FiRefreshCw className={classNames(isRefreshing && "animate-spin")} />
         </button>
       </div>
     </header>

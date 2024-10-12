@@ -50,7 +50,7 @@ codemgCLI_exe_path = DIST_DIR / codemgCLI_exe_name
 # Config: CodeManager-Setup
 codemanagerSetup_name = "codemg-setup"
 codemanagerSetup_msi_name = f"{codemanagerSetup_name}.msi"
-codemanagerSetup_source = CODEBASE_DIR / "wix/codemg-setup.wsx"
+codemanagerSetup_source = SCRIPTS_DIR / "wix/codemg-setup.wsx"
 codemanagerSetup_msi_path = DIST_DIR / codemanagerSetup_msi_name
 codemanagerSCC_sidecar_path = tauri_release_dir / "scc.exe"
 

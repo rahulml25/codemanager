@@ -34,15 +34,12 @@ def build_codemg_setup():
         [
             config.pyinstaller_path,
             config.codemgCLI_source,
-            "-n",
-            config.codemgCLI_name,
+            *["-n", config.codemgCLI_name],
             "--onefile",
-            "--specpath",
-            config.BUILD_DIR,
+            *["--specpath", config.BUILD_DIR],
             #
             # Secrets
-            "--add-data",
-            f"{config.secrets_build_path}:./",
+            *["--add-data", f"{config.secrets_build_path}:./"],
         ],
     )
 
@@ -54,33 +51,21 @@ def build_codemg_setup():
     build_component(
         "codemg-setup executable",
         [
-            "wix",
-            "build",
-            config.codemanagerSetup_source,
-            "-o",
-            config.codemanagerSetup_msi_path,
+            *["wix", "build", config.codemanagerSetup_source],
+            *["-o", config.codemanagerSetup_msi_path],
             #
             # App Info
-            "-d",
-            f"appName={config.app_name}",
-            "-d",
-            f"appVersion={config.app_version}",
-            "-d",
-            f"appManufacturer={config.app_manufacturer}",
-            "-d",
-            f"appIdentifier={config.app_identifier}",
-            "-d",
-            f"upgradeCode={upgradeCode}",
+            *["-d", f"appName={config.app_name}"],
+            *["-d", f"appVersion={config.app_version}"],
+            *["-d", f"appManufacturer={config.app_manufacturer}"],
+            *["-d", f"appIdentifier={config.app_identifier}"],
+            *["-d", f"upgradeCode={upgradeCode}"],
             #
             # Components Info
-            "-d",
-            f"iconPath={config.codemanagerApp_exe_path}",
-            "-d",
-            f"codemgCLIPath={config.codemgCLI_exe_path}",
-            "-d",
-            f"codemamagerPath={config.codemanagerApp_exe_path}",
-            "-d",
-            f"sccSidecarPath={config.codemanagerSCC_sidecar_path}",
+            *["-d", f"iconPath={config.codemanagerApp_exe_path}"],
+            *["-d", f"codemgCLIPath={config.codemgCLI_exe_path}"],
+            *["-d", f"codemamagerPath={config.codemanagerApp_exe_path}"],
+            *["-d", f"sccSidecarPath={config.codemanagerSCC_sidecar_path}"],
         ],
     )
 

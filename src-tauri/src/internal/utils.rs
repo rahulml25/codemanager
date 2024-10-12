@@ -33,10 +33,11 @@ pub(crate) fn secure_projects_table(conn: &Connection) {
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 template TEXT NOT NULL,
-                path TEXT,
+                path TEXT NOT NULL,
                 description TEXT NOT NULL,
                 _createdAt DATETIME NOT NULL,
-                _isActive BOOLEAN NOT NULL
+                _isActive BOOLEAN NOT NULL,
+                _isRelocateable BOOLEAN NOT NULL
             )",
             [],
         )
@@ -170,8 +171,8 @@ pub(crate) fn check_new_projects() {
         // Insert new project
         conn.execute(
             "INSERT INTO projects
-                (id, name, template, path, description, _createdAt, _isActive)
-                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                (id, name, template, path, description, _createdAt, _isActive, _isRelocateable)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
             ",
             params![
                 new_project.id.clone(),
@@ -181,6 +182,7 @@ pub(crate) fn check_new_projects() {
                 new_project.description.clone(),
                 new_project._createdAt.to_rfc3339(),
                 new_project._isActive,
+                new_project._isRelocateable,
             ],
         )
         .unwrap();
