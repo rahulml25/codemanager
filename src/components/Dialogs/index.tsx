@@ -39,7 +39,7 @@ function ProjectDialogBase({}: {}) {
   useSignals();
   const divRef = useRef<HTMLDivElement>(null);
   const [dialogMode, setDialogMode] = useState<DialogMode>(() =>
-    !currentProject.value!._isRelocateable ? "view" : "relocator",
+    !currentProject.value!._isRelocatable ? "view" : "relocator",
   );
   const [previousProject, setPreviousProject] = useState<Project | null>(null);
 
@@ -95,21 +95,19 @@ function ProjectDialogBase({}: {}) {
           [currentDefaultId]: previousProjects,
         };
 
-        console.log("Project Deleted successfully");
+        closeInView();
       });
     }
   }
 
   function handleClickOutside(event: any) {
-    // console.log(event.target);
-    // console.log(divRef.current?.contains(event.target));
-
     if (
       !dialogs.askBox.value &&
       divRef.current &&
       !divRef.current.contains(event.target) &&
       !titlebarElement?.contains(event.target)
     ) {
+      currentProject.value = null;
       dialogs.project.value = false;
     } else {
       /* clicked inside */

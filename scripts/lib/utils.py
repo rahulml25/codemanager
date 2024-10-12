@@ -7,8 +7,13 @@ StrOrBytesPath: TypeAlias = str | bytes | os.PathLike[str] | os.PathLike[bytes]
 
 
 # Console printing
-def eprint(*args, **kwargs):
-    return print(*args, file=sys.stderr, **kwargs)
+def eprint(
+    *values: object,
+    sep: str | None = " ",
+    end: str | None = "\n",
+    flush: Literal[False] = False,
+):
+    return print(*values, file=sys.stderr, sep=sep, end=end, flush=flush)
 
 
 # Process Handeling
@@ -138,10 +143,10 @@ def downloadFile(url: str, dest_path: StrOrBytesPath, name: str | None = None):
                 print("Done")
         else:
             filename = url.split("/")[-1]
-            print(f"Failed to download file: {filename} [{res.status_code}]")
+            eprint(f"Failed to download file: {filename} [{res.status_code}]")
             os._exit(1)
     except Exception as e:
-        print("Failed" if name else e)
+        eprint("Failed" if name else e)
         os._exit(1)
 
 
@@ -160,7 +165,7 @@ def add_to_startup(program_name: str, path: str):
         winreg.CloseKey(key)
         print(f"Added '{program_name}' to startup.")
     except Exception as e:
-        print("Error [winreg]:", e)
+        eprint("Error [winreg]:", e)
 
 
 def remove_from_startup(program_name: str):
@@ -190,8 +195,8 @@ def remove_from_startup(program_name: str):
         winreg.CloseKey(key)
         print(f"Removed '{program_name}' from startup successfully.")
     except FileNotFoundError:
-        print("Registry key not found.")
+        eprint("Registry key not found.")
     except PermissionError:
-        print("Permission denied. [winreg]")
+        eprint("Permission denied. [winreg]")
     except Exception as e:
-        print(f"An error occurred [winreg]: {e}")
+        eprint(f"An error occurred [winreg]: {e}")

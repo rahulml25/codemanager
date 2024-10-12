@@ -1,24 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { invoke } from "@tauri-apps/api/tauri";
 import { filters, projects } from "@/lib/signals";
 import { useSignals } from "@preact/signals-react/runtime";
 
 import ProjectCard from "./ProjectCard";
 
 import type { Project } from "@/lib/schemas";
+import { fetchProjects } from "@/lib/utils";
 import templates from "@/lib/options/templates";
 
 type Props = {};
 
 export default function ProjectsFeed({}: Props) {
   useSignals();
-
   const [localProjects, setProjectsFeed] = useState<Project[]>([]);
-
-  async function fetchProjects() {
-    const fetchedProjects = await invoke<Project[]>("get_projects");
-    projects.value = fetchedProjects;
-  }
 
   useEffect(() => {
     fetchProjects();

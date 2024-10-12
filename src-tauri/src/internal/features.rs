@@ -1,9 +1,13 @@
-use chrono::DateTime;
-use rusqlite::params;
-use std::collections::HashMap;
+use lazy_static::lazy_static;
+use parking_lot::Mutex;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-use super::utils::{check_new_projects, secure_projects_table};
+use chrono::DateTime;
+use rusqlite::params;
+use whoami;
+
+use super::utils::{check_new_projects, get_auth_challenge, get_device_id, secure_projects_table};
 use crate::db::open_encrypted_db;
 use crate::scc::utils::codebase_statistics;
 use crate::schemas::app_response::AppResponse;
@@ -20,7 +24,7 @@ pub fn get_projects() -> Vec<Project> {
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, template, path, description, _createdAt, _isActive, _isRelocateable
+            "SELECT id, name, template, path, description, _createdAt, _isActive, _isRelocatable
                 FROM projects
                 WHERE _isActive == ?1
             ",
@@ -40,7 +44,7 @@ pub fn get_projects() -> Vec<Project> {
                     .unwrap()
                     .to_utc(),
                 _isActive: row.get(6)?,
-                _isRelocateable: row.get(7)?,
+                _isRelocatable: row.get(7)?,
             })
         })
         .unwrap()
@@ -77,17 +81,12 @@ pub fn get_previous_projects(
         .unwrap();
 
     if !Path::new(&path).exists() {
-        conn.execute(
-            "UPDATE projects SET _isRelocateable = ?1 WHERE id == ?2",
-            params![true, currentDefaultId],
-        )
-        .unwrap();
         return Err(AppResponse::new_err("Path does not exists".to_string()));
     }
 
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, template, path, description, _createdAt, _isActive, _isRelocateable
+            "SELECT id, name, template, path, description, _createdAt, _isActive, _isRelocatable
                 FROM projects
                 WHERE path == ?1 AND _isActive == ?2
             ",
@@ -107,7 +106,7 @@ pub fn get_previous_projects(
                     .unwrap()
                     .to_utc(),
                 _isActive: row.get(6)?,
-                _isRelocateable: row.get(7)?,
+                _isRelocatable: row.get(7)?,
             })
         })
         .unwrap()
@@ -118,7 +117,7 @@ pub fn get_previous_projects(
 }
 
 #[tauri::command]
-pub fn _create_project(
+pub fn create_project(
     name: String,
     template: String,
     path: String,
@@ -136,13 +135,17 @@ pub fn _create_project(
         return Err(AppResponse::new_err(format!("duplicate path")));
     };
 
+    if !Path::new(&path).exists() {
+        return Err(AppResponse::new_err(format!("Path does not exists")));
+    }
+
     let new_project = match Project::new(name, template, path, description) {
         Ok(project) => project,
         Err(err_msg) => return Err(AppResponse::new_err(err_msg.to_string())),
     };
 
     conn.execute(
-        "INSERT INTO projects (id, name, template, path, description, _createdAt, _isActive, _isRelocateable) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO projects (id, name, template, path, description, _createdAt, _isActive, _isRelocatable) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             new_project.id.clone(),
             new_project.name.clone(),
@@ -151,7 +154,7 @@ pub fn _create_project(
             new_project.description.clone(),
             new_project._createdAt.to_rfc3339(),
             new_project._isActive,
-            new_project._isRelocateable,
+            new_project._isRelocatable,
         ],
     )
     .unwrap();
@@ -215,7 +218,7 @@ pub fn relocate_project(
     let mut stmt = conn
         .prepare(
             "SELECT path FROM projects
-                    WHERE id == ?1 AND _isActive == ?2 AND _isRelocateable == ?3",
+                    WHERE id == ?1 AND _isActive == ?2 AND _isRelocatable == ?3",
         )
         .unwrap();
     let does_exists = stmt.exists(params![projectId, true, true]).unwrap();
@@ -237,7 +240,7 @@ pub fn relocate_project(
 
     conn.execute(
         "UPDATE projects
-            SET path = ?1, _isRelocateable = ?2
+            SET path = ?1, _isRelocatable = ?2
             WHERE id == ?3",
         params![newPath, false, projectId],
     )
@@ -256,7 +259,7 @@ pub fn change_defaultProject_onpath(
     let conn = open_encrypted_db().unwrap();
     secure_projects_table(&conn);
 
-    if !Path::new(path.as_str()).exists() {
+    if !Path::new(&path).exists() {
         return Err(AppResponse::new_err(format!("Path does not exists")));
     }
 
@@ -291,7 +294,47 @@ pub fn change_defaultProject_onpath(
     )
     .unwrap();
 
-    Ok(AppResponse::new_err(true))
+    Ok(AppResponse::new_ok(true))
+}
+
+#[allow(non_snake_case)]
+#[tauri::command]
+pub fn delete_relocatable_project(
+    projectId: String,
+) -> Result<AppResponse<bool>, AppResponse<String>> {
+    let conn = open_encrypted_db().unwrap();
+    secure_projects_table(&conn);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT path FROM projects
+                    WHERE id == ?1 AND _isActive == ?2 AND _isRelocatable == ?3",
+        )
+        .unwrap();
+    let does_exists = stmt.exists(params![projectId, true, true]).unwrap();
+
+    if !does_exists {
+        return Err(AppResponse::new_err(format!("project doesn't exist")));
+    }
+
+    let path = stmt
+        .query_row(params![projectId, true, true], |row| {
+            row.get::<usize, String>(0)
+        })
+        .unwrap();
+
+    if Path::new(&path).exists() {
+        return Err(AppResponse::new_err(format!("Path already exists")));
+    }
+
+    conn.execute(
+        "DELETE FROM projects
+            WHERE id == ?1 AND path == ?2 AND _isRelocatable == ?3",
+        params![projectId, path, true],
+    )
+    .unwrap();
+
+    return Ok(AppResponse::new_ok(true));
 }
 
 #[allow(non_snake_case)]
@@ -334,13 +377,94 @@ pub fn delete_previousProject_onpath(
     )
     .unwrap();
 
-    Ok(AppResponse::new_err(true))
+    Ok(AppResponse::new_ok(true))
 }
 
+#[allow(non_snake_case)]
+#[tauri::command]
+pub fn delete_existing_project(
+    projectId: String,
+    challenge: String,
+) -> Result<AppResponse<bool>, AppResponse<String>> {
+    // Challenge Authentication
+    {
+        let mut challenges = AUTH_CHALLENGES.lock();
+        let curr_challenge = &(projectId.clone(), challenge.clone());
+        let challenge_exists = challenges.contains(curr_challenge);
+
+        if !challenge_exists {
+            return Err(AppResponse::new_err(format!("challenge doesn't exist")));
+        }
+
+        challenges.remove(curr_challenge);
+    }
+
+    let conn = open_encrypted_db().unwrap();
+    secure_projects_table(&conn);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT path FROM projects
+                WHERE id == ?1 AND _isActive == ?2",
+        )
+        .unwrap();
+    let does_exists = stmt.exists(params![projectId, true]).unwrap();
+
+    if !does_exists {
+        return Err(AppResponse::new_err(format!("project doesn't exist")));
+    }
+
+    let path = stmt
+        .query_row(params![projectId, true], |row| row.get::<usize, String>(0))
+        .unwrap();
+
+    if !Path::new(&path).exists() {
+        return Err(AppResponse::new_err(format!("Path doesn't exist")));
+    }
+
+    conn.execute(
+        "DELETE FROM projects
+            WHERE id == ?1 AND path == ?2 AND _isActive == ?3",
+        params![projectId, path, true],
+    )
+    .unwrap();
+
+    return Ok(AppResponse::new_ok(true));
+}
+
+#[allow(non_snake_case)]
 #[tauri::command]
 pub fn mesure_codebase(
-    path: String,
+    projectId: String,
 ) -> Result<AppResponse<(HashMap<String, usize>, usize)>, AppResponse<String>> {
+    let conn = open_encrypted_db().unwrap();
+    secure_projects_table(&conn);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT path FROM projects
+                WHERE id == ?1 AND _isActive == ?2",
+        )
+        .unwrap();
+    let does_exists = stmt.exists(params![projectId, true]).unwrap();
+
+    if !does_exists {
+        return Err(AppResponse::new_err(format!("project doesn't exist")));
+    }
+
+    let path = stmt
+        .query_row(params![projectId, true], |row| row.get::<usize, String>(0))
+        .unwrap();
+
+    if !Path::new(&path).exists() {
+        conn.execute(
+            "UPDATE projects SET _isRelocatable = ?1 WHERE id == ?2",
+            params![true, projectId],
+        )
+        .unwrap();
+        return Err(AppResponse::new_err("Path does not exists".to_string()));
+    }
+
     let codebase_stat = codebase_statistics(path);
 
     if codebase_stat.is_err() {
@@ -351,4 +475,64 @@ pub fn mesure_codebase(
     let (language_map, total_code) = codebase_stat.unwrap();
 
     Ok(AppResponse::new_ok((language_map, total_code)))
+}
+
+#[allow(non_snake_case)]
+#[tauri::command]
+pub fn check_relocatable_existance(
+    projectId: String,
+) -> Result<AppResponse<bool>, AppResponse<String>> {
+    let conn = open_encrypted_db().unwrap();
+    secure_projects_table(&conn);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT path FROM projects
+                    WHERE id == ?1 AND _isActive == ?2 AND _isRelocatable == ?3",
+        )
+        .unwrap();
+    let does_exists = stmt.exists(params![projectId, true, true]).unwrap();
+
+    if !does_exists {
+        return Err(AppResponse::new_err(format!("project doesn't exist")));
+    }
+
+    let path = stmt
+        .query_row(params![projectId, true, true], |row| {
+            row.get::<usize, String>(0)
+        })
+        .unwrap();
+
+    if !Path::new(&path).exists() {
+        return Ok(AppResponse::new_ok(false));
+    }
+
+    conn.execute(
+        "UPDATE projects
+            SET _isRelocatable = ?1
+            WHERE id == ?2 AND path == ?3",
+        params![false, projectId, path],
+    )
+    .unwrap();
+
+    Ok(AppResponse::new_ok(true))
+}
+
+// Backend Static variables
+lazy_static! {
+    static ref AUTH_CHALLENGES: Mutex<HashSet<(String, String)>> = Mutex::new(HashSet::new());
+}
+
+#[allow(non_snake_case)]
+#[tauri::command]
+pub fn get_user_credentials(projectId: String) -> (String, String, String, String) {
+    let realname = whoami::realname();
+    let name = whoami::username();
+    let challenge = get_auth_challenge();
+    let user_id = get_device_id().unwrap();
+
+    let mut challenges = AUTH_CHALLENGES.lock();
+    challenges.insert((projectId, challenge.clone()));
+
+    return (challenge, user_id, name, realname);
 }
