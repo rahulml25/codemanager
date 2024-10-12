@@ -2,14 +2,20 @@ import { motion } from "framer-motion";
 import { invoke } from "@tauri-apps/api";
 import { useEffect, useState } from "react";
 import { signal } from "@preact/signals-core";
-import { classNames, openInVSCode, time } from "@/lib/utils";
+import {
+  classNames,
+  openInVSCode,
+  signInWithWebAuthn,
+  time,
+} from "@/lib/utils";
 
+import { openAskBox } from "./AskBox";
 import { Project } from "@/lib/schemas";
-import { currentProject } from "@/lib/signals";
+import { currentProject, dialogs, projects } from "@/lib/signals";
 import { type Language, languages } from "@/lib/options";
 import templates, { TemplateShow } from "@/lib/options/templates";
 
-import { MdEdit } from "react-icons/md";
+import { MdEdit, MdDelete } from "react-icons/md";
 import { VscRunAbove } from "react-icons/vsc";
 import { FaChevronDown } from "react-icons/fa6";
 import { useSignals } from "@preact/signals-react/runtime";
@@ -41,6 +47,36 @@ export default function ProjectView({
   );
   const [measuringCodebase, setMeasuringCodebase] = useState(true);
 
+  async function deleteCurrentProject() {
+    const choosenValue = await openAskBox({
+      title: "Delete Existing Project",
+      contect: "Do you really want to Delete this project?",
+      options: [
+        { name: "Delete", value: 1, colour: "red" },
+        { name: "Cancle", value: 0, colour: "blue" },
+      ],
+    });
+    if (choosenValue !== 1) return;
+
+    const challenge = await signInWithWebAuthn(project.id);
+    if (!challenge) return;
+
+    await invoke<AppResponse<boolean, string>>("delete_existing_project", {
+      projectId: project.id,
+      challenge,
+    }).then(() => {
+      const idx = projects.value.indexOf(project);
+      projects.value = projects.value.toSpliced(idx, 1);
+
+      const temp = previousProjectsCatches.value;
+      delete temp[project.id];
+      previousProjectsCatches.value = temp;
+
+      currentProject.value = null;
+      dialogs.project.value = false;
+    });
+  }
+
   useEffect(() => {
     type language_map = { [k: string]: number };
 
@@ -52,10 +88,7 @@ export default function ProjectView({
         currentDefaultId: project.id,
       }).catch((res) => res)) as AppResponse<Project[], string>;
 
-      if (!res.success) {
-        if (res.data === "Path does not exists") return openRelocatorMode();
-        return;
-      }
+      if (!res.success) return;
 
       const previousProjects_sorted = res.data.sort(
         (a, b) => time(a._createdAt) - time(b._createdAt),
@@ -72,10 +105,13 @@ export default function ProjectView({
     (async () => {
       const res = (await invoke<AppResponse<[language_map, number], string>>(
         "mesure_codebase",
-        { path: project.path },
+        { projectId: project.id },
       ).catch((res) => res)) as AppResponse<[language_map, number], string>;
 
-      if (!res.success) return;
+      if (!res.success) {
+        if (res.data === "Path does not exists") return openRelocatorMode();
+        return;
+      }
 
       const [languages, _total_code] = res.data;
       let sorted_languages = Object.entries(languages)
@@ -90,9 +126,15 @@ export default function ProjectView({
   return (
     <>
       <div className="mb-4 flex justify-between border-b-2 border-b-neutral-600 pb-1.5">
-        <h1 className="line-clamp-1 text-3xl">{project.name}</h1>
+        <h1 className="line-clamp-1 text-3xl font-semibold">{project.name}</h1>
 
         <div className="flex items-center gap-1 text-sm">
+          <button
+            className="rounded-md bg-neutral-800 p-1 hover:bg-opacity-85"
+            onClick={deleteCurrentProject}
+          >
+            <MdDelete />
+          </button>
           <button
             className="rounded-md bg-neutral-800 p-1 hover:bg-opacity-85"
             onClick={() => setTimeout(openEditMode, 100)}
@@ -105,11 +147,13 @@ export default function ProjectView({
         </div>
       </div>
 
-      {project.description ? (
-        <p>{project.description}</p>
-      ) : (
-        <p className="text-center text-gray-500">No description</p>
-      )}
+      <div className="relative h-96 overflow-y-auto">
+        {project.description ? (
+          <p>{project.description}</p>
+        ) : (
+          <p className="text-center text-gray-500">No description</p>
+        )}
+      </div>
 
       <div className="absolute bottom-5 left-6 right-6 flex items-center justify-between">
         <TemplateShow
@@ -237,22 +281,20 @@ function PreviousProjectItem({
   );
 }
 
-function LoadingDots() {
-  return (
-    <div className="flex items-center justify-center space-x-2">
-      {[0, 1, 2].map((index) => (
-        <motion.div
-          key={index}
-          className="h-1 w-1 rounded-full bg-gray-400"
-          animate={{ y: ["0%", "-50%", "0%"] }}
-          transition={{
-            duration: 0.8,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: index * 0.15,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+const LoadingDots = () => (
+  <div className="flex items-center justify-center space-x-2">
+    {[0, 1, 2].map((index) => (
+      <motion.div
+        key={index}
+        className="h-1 w-1 rounded-full bg-gray-400"
+        animate={{ y: ["0%", "-50%", "0%"] }}
+        transition={{
+          duration: 0.8,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: index * 0.15,
+        }}
+      />
+    ))}
+  </div>
+);

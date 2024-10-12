@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from .config import TEMPLATE
 from .custom_classes import NewProject
+from lib.utils import eprint
 from lib.config.consumer import (
     secrets_path,
     signing_key_name,
@@ -48,4 +49,4 @@ def create_project_db(
             f.write(encoded_jwt)
 
     except:
-        print("CodeManager: Failed to write project data.")
+        eprint("CodeManager: Failed to write project data.")

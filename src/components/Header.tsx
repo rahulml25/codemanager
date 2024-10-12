@@ -1,34 +1,59 @@
 import { useState } from "react";
-import { classNames } from "@/lib/utils";
-import { invoke } from "@tauri-apps/api/tauri";
+import { Project } from "@/lib/schemas";
 import { filters, projects } from "@/lib/signals";
+import { invoke, dialog } from "@tauri-apps/api";
+import { FiPlus, FiRefreshCw } from "react-icons/fi";
+import { classNames, fetchProjects } from "@/lib/utils";
 import { useSignals } from "@preact/signals-react/runtime";
-
-import { FiRefreshCw } from "react-icons/fi";
-import type { Project } from "@/lib/schemas";
 
 type Props = {};
 
 export default function Header({}: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  async function fetchProjects() {
+  async function _fetchProjects() {
     setIsRefreshing(true);
-    const fetchedProjects: Project[] = await invoke("get_projects");
-    projects.value = fetchedProjects;
+    await fetchProjects();
     setIsRefreshing(false);
+  }
+
+  async function importExistingProject() {
+    const projectPath = await dialog
+      .open({ directory: true, multiple: false })
+      .then((res) => (Array.isArray(res) ? res[0] : res));
+    if (projectPath == null) return;
+
+    const seperator = projectPath.includes("/") ? "/" : "\\";
+    const directory_name = projectPath.split(seperator).reverse()[0];
+
+    // TODO: Repair defaults
+    const res = await invoke<AppResponse<Project, string>>("create_project", {
+      name: directory_name,
+      template: "normal",
+      path: projectPath,
+      description: "",
+    }).then((res) => res);
+    if (!res.success) return;
+
+    projects.value = [...projects.value, res.data];
   }
 
   return (
     <header className="sticky top-0 z-[5] mr-1.5 flex py-2">
       <SearchBar />
 
-      <div className="relative">
+      <div className="relative flex items-center">
         <button
-          className="absolute right-0 flex items-center gap-2 rounded-2xl bg-neutral-800/85 px-4 py-1.5 text-neutral-200 shadow-lg hover:bg-opacity-80"
-          onClick={fetchProjects}
+          className="group/button absolute right-[106px] flex h-8 items-center gap-2 rounded-xl bg-neutral-800/85 px-2.5 py-1.5 text-neutral-200 shadow-lg hover:scale-105 hover:bg-opacity-80"
+          onClick={importExistingProject}
         >
-          <span>Refresh</span>
+          <FiPlus />
+        </button>
+        <button
+          className="group-button absolute right-0 flex items-center gap-2 rounded-2xl bg-neutral-800/85 px-4 py-1.5 text-neutral-200 shadow-lg hover:bg-opacity-80"
+          onClick={_fetchProjects}
+        >
+          <span className="text-sm">Refresh</span>
           <FiRefreshCw className={classNames(isRefreshing && "animate-spin")} />
         </button>
       </div>

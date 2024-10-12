@@ -12,6 +12,10 @@ use crate::db::open_encrypted_db;
 use crate::schemas::project::Project;
 use crate::schemas::project_claims::ProjectClaims;
 
+use base64::{engine::general_purpose, Engine};
+use get_if_addrs::get_if_addrs;
+use rand::Rng;
+
 pub fn safely_create_important_dirs() {
     if !BIN_DIR.exists() {
         fs::create_dir_all(BIN_DIR.as_path()).unwrap();
@@ -22,8 +26,6 @@ pub fn safely_create_important_dirs() {
 }
 
 pub(crate) fn secure_projects_table(conn: &Connection) {
-    // conn.execute("DROP TABLE IF EXISTS projects", []).unwrap();
-
     let mut stmt = conn.prepare("PRAGMA table_info(projects)").unwrap();
     let project_table_exists = stmt.exists([]).unwrap();
 
@@ -37,7 +39,7 @@ pub(crate) fn secure_projects_table(conn: &Connection) {
                 description TEXT NOT NULL,
                 _createdAt DATETIME NOT NULL,
                 _isActive BOOLEAN NOT NULL,
-                _isRelocateable BOOLEAN NOT NULL
+                _isRelocatable BOOLEAN NOT NULL
             )",
             [],
         )
@@ -115,6 +117,8 @@ pub(crate) fn check_new_projects() {
         match decode::<ProjectClaims>(&data, &decoding_key, &validation) {
             Ok(token_data) => {
                 let claims = token_data.claims;
+                #[cfg(debug_assertions)]
+                println!("Token is valid. Claims: {:#?}", claims);
 
                 // Find if adder_id already present in the database
                 let mut stmt = conn
@@ -146,16 +150,15 @@ pub(crate) fn check_new_projects() {
 
                 new_projects.push(project);
             }
-            Err(err) => {
-                eprintln!("Token is invalid: {}", err);
+            Err(_err) => {
+                #[cfg(debug_assertions)]
+                eprintln!("Token is invalid: {}", _err);
             }
         }
 
         // delete the file
         fs::remove_file(filepath).unwrap();
     }
-
-    println!("Token is valid. Claims: {:#?}", new_projects);
 
     // Finds path matches and Set the newest as default. Turn previous ones off.
     for new_project in new_projects {
@@ -171,7 +174,7 @@ pub(crate) fn check_new_projects() {
         // Insert new project
         conn.execute(
             "INSERT INTO projects
-                (id, name, template, path, description, _createdAt, _isActive, _isRelocateable)
+                (id, name, template, path, description, _createdAt, _isActive, _isRelocatable)
                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
             ",
             params![
@@ -182,9 +185,36 @@ pub(crate) fn check_new_projects() {
                 new_project.description.clone(),
                 new_project._createdAt.to_rfc3339(),
                 new_project._isActive,
-                new_project._isRelocateable,
+                new_project._isRelocatable,
             ],
         )
         .unwrap();
     }
+}
+
+pub(crate) fn get_auth_challenge() -> String {
+    let challenge_stream: Vec<u8> = rand::thread_rng().gen::<[u8; 32]>().to_vec();
+    let challenge = general_purpose::STANDARD.encode(&challenge_stream);
+    return challenge;
+}
+
+pub(crate) fn get_device_id() -> Option<String> {
+    let interfaces = get_if_addrs().unwrap();
+
+    if let Some(interface) = interfaces.first() {
+        // Get the interface name
+        let name = &interface.name.replace("-", "");
+        let name = &interface.name[1..name.len() - 1];
+
+        // Convert the name to a 64-byte array
+        let id_buff = name.as_bytes();
+        let id = id_buff
+            .iter()
+            .map(|byte| format!("{:02x}", byte))
+            .collect::<String>();
+        return Some(id);
+    } else {
+        eprintln!("No network interfaces found.")
+    };
+    return None;
 }

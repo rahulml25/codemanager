@@ -6,8 +6,9 @@ import {
   RustOriginal,
   TypescriptOriginal,
 } from "devicons-react";
-import { AiOutlineCode } from "react-icons/ai";
+import { classNames } from "../utils";
 import { Language, languages } from ".";
+import { AiOutlineCode } from "react-icons/ai";
 import type { TemplateKey } from "@/lib/schemas";
 
 export class Template {
@@ -46,12 +47,22 @@ export const TemplateShow = ({
   name,
   displayName,
   icon: Icon,
+  className,
+  onClick,
 }: {
   name: Template["name"];
   displayName: Template["displayName"];
   icon: Template["icon"];
+  className?: string;
+  onClick?(): void;
 }) => (
-  <div className="flex items-center gap-1.5 rounded-xl bg-neutral-800 px-2 py-[3px] text-neutral-300 shadow">
+  <div
+    className={classNames(
+      "flex items-center gap-1.5 rounded-xl bg-neutral-800 px-2 py-[3px] text-neutral-300 shadow",
+      !!className && className,
+    )}
+    onClick={onClick}
+  >
     {!!Icon && <Icon />}
     <span className="max-w-24 truncate text-xs font-semibold">
       {displayName ? displayName : name}

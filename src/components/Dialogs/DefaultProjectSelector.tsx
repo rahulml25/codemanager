@@ -73,14 +73,16 @@ export default function DefaultProjectSelector({
       </div>
 
       <div className="mb-4 border-b-2 border-b-neutral-600 pb-1.5">
-        <h1 className="line-clamp-1 text-3xl">{project.name}</h1>
+        <h1 className="line-clamp-1 text-3xl font-semibold">{project.name}</h1>
       </div>
 
-      {project.description ? (
-        <p>{project.description}</p>
-      ) : (
-        <p className="text-center text-gray-500">No description</p>
-      )}
+      <div className="relative h-96 overflow-y-auto">
+        {project.description ? (
+          <p>{project.description}</p>
+        ) : (
+          <p className="text-center text-gray-500">No description</p>
+        )}
+      </div>
 
       <div className="absolute bottom-5 left-6 right-6 flex items-center justify-between">
         <TemplateShow
@@ -95,8 +97,6 @@ export default function DefaultProjectSelector({
         >
           Delete
         </button>
-
-        {/* deletePreviousProject */}
       </div>
     </>
   );

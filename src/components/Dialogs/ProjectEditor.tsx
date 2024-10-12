@@ -1,11 +1,10 @@
-import { useRef } from "react";
+import React, { useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api";
 import { Project, projectSchema } from "@/lib/schemas";
 import { currentProject, projects } from "@/lib/signals";
-// import { type Language, languages } from "@/lib/options";
-import templates, { TemplateShow } from "@/lib/options/templates";
+import templates, { TemplateShow, Template } from "@/lib/options/templates";
 
 import { FaArrowLeftLong } from "react-icons/fa6";
-import { invoke } from "@tauri-apps/api";
 
 type Props = {
   closeEditMode(): void;
@@ -63,7 +62,7 @@ export default function ProjectEditor({ closeEditMode }: Props) {
         <input
           type="text"
           name="name"
-          className="bg-transparent text-3xl outline-none"
+          className="w-full bg-transparent text-3xl font-semibold outline-none"
           defaultValue={project.name}
           onChange={(e) =>
             (projectUpdate.current = {
@@ -88,12 +87,62 @@ export default function ProjectEditor({ closeEditMode }: Props) {
       />
 
       <div className="absolute bottom-5 left-6 right-6 flex items-center justify-between">
-        <TemplateShow
-          name={template.name}
-          displayName={template.displayName}
-          icon={template.icon}
+        <TemplateSelector
+          defaultTemplate={template}
+          projectUpdate={projectUpdate}
         />
       </div>
+    </>
+  );
+}
+
+type TemplateSelectorProps = {
+  defaultTemplate: Template;
+  projectUpdate: React.MutableRefObject<{
+    template: Project["template"];
+  }>;
+};
+
+function TemplateSelector({
+  defaultTemplate,
+  projectUpdate,
+}: TemplateSelectorProps) {
+  const [template, setTemplate] = useState(defaultTemplate);
+  const [isOpen, setIsOpen] = useState(false);
+
+  function handleTemplateSelect(template: Template) {
+    setTemplate(template);
+    projectUpdate.current.template = template.name;
+    setTimeout(() => setIsOpen(false), 100);
+  }
+
+  return (
+    <>
+      {isOpen ? (
+        <div className="cursor-pointer rounded-xl border border-neutral-800 bg-neutral-800 shadow-lg">
+          {Object.values(templates).map((template) => (
+            <TemplateShow
+              key={template.name}
+              name={template.name}
+              displayName={template.displayName}
+              icon={template.icon}
+              className="shadow-none transition-colors hover:bg-black/10"
+              onClick={() => handleTemplateSelect(template)}
+            />
+          ))}
+        </div>
+      ) : (
+        <span
+          onClick={() => setTimeout(() => setIsOpen(true), 100)}
+          className="cursor-pointer"
+        >
+          <TemplateShow
+            name={template.name}
+            displayName={template.displayName}
+            icon={template.icon}
+          />
+        </span>
+      )}
     </>
   );
 }
