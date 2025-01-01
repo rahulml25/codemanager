@@ -59,7 +59,7 @@ class JS_PACKAGE_MANAGERS(Enum):
 
 
 TEMPLATE = Literal[
-    "normal", "python", "python_sep", "nodejs", "nodejs-ts", "nextjs", "rust"
+    "normal", "python", "python-sep", "nodejs", "nodejs-ts", "nextjs", "rust"
 ]
 
 from .custom_classes import JS_PACKAGE_MANAGER, TemplateInit, Templates
@@ -70,7 +70,7 @@ from .project_builders import (
     create_normal_project,
     create_python_project,
     create_rust_project,
-    create_seperate_python_project,
+    create_separate_python_project,
 )
 
 PROJECT_TEMPLATES = Templates[TEMPLATE](
@@ -83,8 +83,8 @@ PROJECT_TEMPLATES = Templates[TEMPLATE](
             func=create_python_project,
             description="Creates a Python project",
         ),
-        "python_sep": TemplateInit(
-            func=create_seperate_python_project,
+        "python-sep": TemplateInit(
+            func=create_separate_python_project,
             description="Creates a Python project with .env",
         ),
         "nodejs": TemplateInit(

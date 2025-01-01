@@ -43,7 +43,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Cached Python dependencies
-        uses: actions/cache@v4
+        id: cache-python
+        uses: actions/cache/restore@v4
         with:
           path: .venv
           key: ${{ runner.os }}-python-${{ hashFiles('scripts/requirements.txt') }}
@@ -52,13 +53,14 @@ jobs:
 
       - name: Cached Vcpkg libraries
         id: cache-vcpkg
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: vcpkg
           key: ${{ runner.os }}-vcpkg
 
       - name: Cached Node dependencies
-        uses: actions/cache@v4
+        id: cache-node
+        uses: actions/cache/restore@v4
         with:
           path: node_modules
           key: ${{ runner.os }}-node_modules-${{ hashFiles('bun.lockb') }}
@@ -66,7 +68,8 @@ jobs:
             ${{ runner.os }}-node_modules-
 
       - name: Cached Rust & Tauri dependencies
-        uses: actions/cache@v4
+        id: cache-rust-tauri
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.cargo/registry
@@ -107,7 +110,7 @@ jobs:
           $env:VCPKG_ROOT = "${{ github.workspace }}\vcpkg"
           git clone https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
           .\vcpkg\bootstrap-vcpkg.bat
-          .\vcpkg\vcpkg install openssl-windows:x64-windows
+          .\vcpkg\vcpkg install openssl:x64-windows
           .\vcpkg\vcpkg integrate install
 
       - name: Add OpenSSL to PATH
@@ -140,3 +143,34 @@ jobs:
           tag_name: ${{ needs.get_tag.outputs.tag_name }}
           body_path: CHANGELOG.md
           files: dist/codemg-setup.msi
+
+      - name: Save Python dependencies
+        if: ${{ startsWith(github.ref, 'refs/heads/') && (steps.cache-python.outputs.cache-hit != 'true')}}
+        uses: actions/cache/save@v4
+        with:
+          path: .venv
+          key: ${{ steps.cache-python.outputs.cache-primary-key }}
+
+      - name: Save Vcpkg libraries
+        if: ${{ startsWith(github.ref, 'refs/heads/') && (steps.cache-vcpkg.outputs.cache-hit != 'true')}}
+        uses: actions/cache/save@v4
+        with:
+          path: vcpkg
+          key: ${{ steps.cache-vcpkg.outputs.cache-primary-key }}
+
+      - name: Save Node dependencies
+        if: ${{ startsWith(github.ref, 'refs/heads/') && (steps.cache-node.outputs.cache-hit != 'true')}}
+        uses: actions/cache/save@v4
+        with:
+          path: node_modules
+          key: ${{ steps.cache-node.outputs.cache-primary-key }}
+          
+      - name: Save Rust & Tauri dependencies
+        uses: actions/cache/save@v4
+        if: ${{ startsWith(github.ref, 'refs/heads/') && (steps.cache-rust-tauri.outputs.cache-hit != 'true')}}
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ steps.cache-rust-tauri.outputs.cache-primary-key }}

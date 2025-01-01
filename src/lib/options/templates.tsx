@@ -20,7 +20,7 @@ export class Template {
   ) {}
 }
 
-const TemplatesContructor = (
+const TemplatesConstructor = (
   templates: Template[],
 ): { [K in Template["name"]]: Template } =>
   Object.assign(
@@ -28,10 +28,10 @@ const TemplatesContructor = (
     ...templates.map((template) => ({ [template.name]: template })),
   );
 
-const templates = TemplatesContructor([
+const templates = TemplatesConstructor([
   new Template("normal", "Normal", AiOutlineCode),
   new Template("python", "Python", PythonOriginal, [languages.Python]),
-  new Template("python_sep", "Env: Python", PythonOriginal, [languages.Python]),
+  new Template("python-sep", "Env: Python", PythonOriginal, [languages.Python]),
   new Template("nodejs", "Nodejs", NodejsOriginal, [languages.JavaScript]),
   new Template("nodejs-ts", "Nodejs: TypeScript", TypescriptOriginal, [
     languages.TypeScript,

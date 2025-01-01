@@ -16,7 +16,7 @@ def eprint(
     return print(*values, file=sys.stderr, sep=sep, end=end, flush=flush)
 
 
-# Process Handeling
+# Process Handling
 def find_process_by_name(process_name: str):
     import psutil
 
@@ -124,7 +124,7 @@ def extract_zip(
             print("Done")
 
 
-# Network Handeling
+# Network Handling
 def downloadFile(url: str, dest_path: StrOrBytesPath, name: str | None = None):
     import requests
 
