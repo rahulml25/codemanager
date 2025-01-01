@@ -12,7 +12,7 @@ def build_component(
 ):
     print(f"Generating {name}...", end="", flush=True)
     if run_command(command, output):
-        eprint("\nBuild Abroaded.")
+        eprint("\nBuild Aborted.")
         exit(1)
     print("done.")
 
@@ -24,7 +24,7 @@ def build_codemg_setup():
     if not config.BUILD_DIR.exists():
         os.makedirs(config.BUILD_DIR)
 
-    # Writing seperate Secrets file for production
+    # Writing separate Secrets file for production
     with open(config.secrets_build_path, "w") as file:
         file.write(f'{signing_key_name}="{os.environ.get(signing_key_name)}"')
 
@@ -64,7 +64,7 @@ def build_codemg_setup():
             # Components Info
             *["-d", f"iconPath={config.codemanagerApp_exe_path}"],
             *["-d", f"codemgCLIPath={config.codemgCLI_exe_path}"],
-            *["-d", f"codemamagerPath={config.codemanagerApp_exe_path}"],
+            *["-d", f"codemanagerPath={config.codemanagerApp_exe_path}"],
             *["-d", f"sccSidecarPath={config.codemanagerSCC_sidecar_path}"],
         ],
     )

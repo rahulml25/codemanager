@@ -3,7 +3,7 @@ import z from "zod";
 export const ProjectTemplates = z.union([
   z.literal("normal"),
   z.literal("python"),
-  z.literal("python_sep"),
+  z.literal("python-sep"),
   z.literal("nodejs"),
   z.literal("nodejs-ts"),
   z.literal("nextjs"),

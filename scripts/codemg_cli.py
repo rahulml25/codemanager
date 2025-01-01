@@ -32,7 +32,7 @@ if args.command == "create":
                 **{},
             )
 
-        case "python_sep":
+        case "python-sep":
             project_template.func(
                 args.directory,
                 **{},

@@ -14,7 +14,7 @@ def write_to_file(file_path: str | Path, content: str):
         file.write(content)
 
 
-def create_python_enviromment(destination_path: str | Path):
+def create_python_environment(destination_path: str | Path):
     environment_path = os.path.join(destination_path, ".venv")
     run_command(["python", "-m", "venv", environment_path])
 

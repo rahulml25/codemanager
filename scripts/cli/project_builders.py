@@ -5,7 +5,7 @@ from .config import JS_PACKAGE_MANAGERS
 from .db_functions import create_project_db
 from .utils import (
     create_directory,
-    create_python_enviromment,
+    create_python_environment,
     write_to_file,
 )
 
@@ -28,11 +28,11 @@ def create_python_project(_directory_path: str, **options: str):
     create_project_db(directory_path.name, os.path.abspath(directory_path), "python")
 
 
-def create_seperate_python_project(_directory_path: str, **options: str):
+def create_separate_python_project(_directory_path: str, **options: str):
     directory_path = Path(_directory_path).resolve()
 
     create_directory(directory_path)
-    create_python_enviromment(directory_path)
+    create_python_environment(directory_path)
 
     script_path = os.path.join(directory_path, "main.py")
     write_to_file(script_path, 'print("Hello World!")')
@@ -40,7 +40,7 @@ def create_seperate_python_project(_directory_path: str, **options: str):
     create_project_db(
         directory_path.name,
         os.path.abspath(directory_path),
-        "python_sep",
+        "python-sep",
     )
 
 
@@ -50,7 +50,7 @@ def create_nodejs_project(_directory_path: str, **options: str):
     js_pm = JS_PACKAGE_MANAGERS.get(js_pm_name)
 
     if js_pm is None:
-        raise Exception(f"JavaScript package manager '{js_pm_name}' not supportd.")
+        raise Exception(f"JavaScript package manager '{js_pm_name}' not supported.")
 
     create_directory(directory_path)
     script_path = os.path.join(directory_path, "index.js")
@@ -69,7 +69,7 @@ def create_nodejsTS_project(_directory_path: str, **options: str):
     js_pm_enum = JS_PACKAGE_MANAGERS.get(js_pm_name)
 
     if js_pm_enum is None:
-        raise Exception(f"JavaScript package manager '{js_pm_name}' not supportd.")
+        raise Exception(f"JavaScript package manager '{js_pm_name}' not supported.")
     js_pm = js_pm_enum.value
 
     create_directory(directory_path)
@@ -113,7 +113,7 @@ def create_nextjs_project(_directory_path: str, **options: str):
     js_pm = JS_PACKAGE_MANAGERS.get(js_pm_name)
 
     if js_pm is None:
-        raise Exception(f"JavaScript package manager '{js_pm_name}' not supportd.")
+        raise Exception(f"JavaScript package manager '{js_pm_name}' not supported.")
 
     run_command([js_pm.name, "create", "next-app@latest", directory_path])
 

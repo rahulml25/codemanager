@@ -11,7 +11,7 @@
 <!- - Components Info - ->
 <?define iconPath = "C:\Code\Rust\codemanager\src-tauri\icons\icon.ico"?>
 <?define codemgCLIPath = "C:\Code\Rust\codemanager\dist\codemg.exe"?>
-<?define codemamagerPath = "C:\Code\Rust\codemanager\src-tauri\target\release\codemanager.exe"?>
+<?define codemanagerPath = "C:\Code\Rust\codemanager\src-tauri\target\release\codemanager.exe"?>
 <?define sccSidecarPath = "C:\Code\Rust\codemanager\src-tauri\target\release\scc.exe"?>
 -->
 
@@ -46,7 +46,7 @@
 					<Directory Id="UtilsFolder" Name="utils">
 						<Component Id="CodemanagerUtils" Guid="e95d805d-dc82-45be-9be4-e34c41eb10fc">
 							<File Id="CodemanagerFile"
-								Source="$(var.codemamagerPath)">
+								Source="$(var.codemanagerPath)">
 								<!-- App Shortcuts -->
 								<Shortcut Id="DesktopCodemanagerShortcut" Name="codemanager"
 									Icon="CodemanagerIcon" Description="A codebases manager"
