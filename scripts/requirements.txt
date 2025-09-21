@@ -1,5 +1,5 @@
 colorama==0.4.6
-pyinstaller==6.5.0
+pyinstaller==6.10.0
 requests==2.31.0
 psutil==5.9.8
 PyJWT==2.8.0

@@ -20,5 +20,15 @@ fn main() {
     let env_variables: Vec<&str> = vec!["JWT_SECRET", "SQLITE_DB_KEY"];
     write_secrets(env_variables, "src/secrets.rs");
 
+    if cfg!(target_os = "windows") {
+        // Use vcpkg static libraries
+        let openssl_dir =
+            env::var("OPENSSL_DIR").expect("OPENSSL_DIR not found in build environment");
+
+        if !openssl_dir.is_empty() {
+            println!("cargo:rustc-link-search=native={openssl_dir}\\lib");
+        }
+    }
+
     tauri_build::build()
 }

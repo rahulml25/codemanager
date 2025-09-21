@@ -70,6 +70,7 @@ def run_command(
 
     if output == "shell":
         process = subprocess.Popen(command, shell=True)
+        wait = process.wait
     elif output == "none":
         process = subprocess.Popen(
             command,
@@ -77,7 +78,9 @@ def run_command(
             stderr=subprocess.PIPE,
             shell=True,
         )
-    return process.wait()
+        wait = lambda: (process.communicate(), process.returncode)[1]
+
+    return wait()
 
 
 # Disk Management

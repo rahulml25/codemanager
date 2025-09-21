@@ -22,6 +22,50 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag source branch
+        run: |
+          # Fetch all branches to ensure we can check merges
+          git fetch --all
+
+          # Get the branch that the tag points to (not just contains the commit)
+          # Method 1: Check git log for the most recent branch
+          TAG_BRANCH=$(git log --oneline --decorate -1 ${{ github.sha }} | grep -o 'origin/[^,)]*' | grep -E '(main|development)' | head -1 | sed 's/origin\///')
+
+          # Method 2: If that fails, check which branch was most recently updated with this commit
+          if [ -z "$TAG_BRANCH" ]; then
+            # Check which branch has this commit as the latest
+            for branch in main development; do
+              if [ "$(git rev-parse origin/$branch)" = "${{ github.sha }}" ]; then
+                TAG_BRANCH="$branch"
+                break
+              fi
+            done
+          fi
+
+          # Method 3: Fallback to tag naming convention
+          if [ -z "$TAG_BRANCH" ]; then
+            if [[ "${{ github.ref_name }}" == v* ]]; then
+              TAG_BRANCH="main"
+            elif [[ "${{ github.ref_name }}" == beta-* ]]; then
+              TAG_BRANCH="development"
+            fi
+          fi
+
+          echo "Tag was created from branch: $TAG_BRANCH"
+
+          # Validate tag/branch combination
+          if [[ "${{ github.ref_name }}" == v* && "$TAG_BRANCH" != "main" ]]; then
+            echo "❌ v* tags must be created from main branch, but this was created from: $TAG_BRANCH"
+            exit 1
+          elif [[ "${{ github.ref_name }}" == beta-* && "$TAG_BRANCH" != "development" ]]; then
+            echo "❌ beta-* tags must be created from development branch, but this was created from: $TAG_BRANCH"
+            exit 1
+          fi
+
+          echo "✅ Tag validation passed"
 
       - name: Extract Tag message
         run: |
@@ -110,12 +154,8 @@ jobs:
           $env:VCPKG_ROOT = "${{ github.workspace }}\vcpkg"
           git clone https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
           .\vcpkg\bootstrap-vcpkg.bat
-          .\vcpkg\vcpkg install openssl:x64-windows
+          .\vcpkg\vcpkg install openssl:x64-windows-static
           .\vcpkg\vcpkg integrate install
-
-      - name: Add OpenSSL to PATH
-        shell: pwsh
-        run: echo "${{ github.workspace }}\vcpkg\installed\x64-windows\tools\openssl" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: |
@@ -125,8 +165,11 @@ jobs:
       - name: Build Components
         env:
           VCPKG_ROOT: ${{ github.workspace }}\vcpkg
-          OPENSSL_DIR: ${{ github.workspace }}\vcpkg\installed\x64-windows
-          VCPKGRS_DYNAMIC: 1
+          OPENSSL_DIR: ${{ github.workspace }}\vcpkg\installed\x64-windows-static
+          OPENSSL_STATIC: 1
+          # Force static linking
+          VCPKGRS_DYNAMIC: 0
+          RUSTFLAGS: "-C target-feature=+crt-static"
 
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           SQLITE_DB_KEY: ${{ secrets.SQLITE_DB_KEY }}
@@ -164,7 +207,7 @@ jobs:
         with:
           path: node_modules
           key: ${{ steps.cache-node.outputs.cache-primary-key }}
-          
+
       - name: Save Rust & Tauri dependencies
         uses: actions/cache/save@v4
         if: ${{ startsWith(github.ref, 'refs/heads/') && (steps.cache-rust-tauri.outputs.cache-hit != 'true')}}
